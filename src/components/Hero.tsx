@@ -52,7 +52,8 @@ export default function Hero() {
   const layout = FRAME_LAYOUTS[step];
   const color = FRAME_COLORS[step];
   const active = ROLES[step];
-  const others = ROLES.filter((_, i) => i !== step);
+  const before = ROLES.slice(0, step);
+  const after = ROLES.slice(step + 1);
   const article = /^[aeiou]/i.test(active) ? "an" : "a";
 
   return (
@@ -87,15 +88,29 @@ export default function Hero() {
           ))}
         </div>
 
-        {/* hero copy — a fixed sentence that never moves, with the changing
-            role list pinned directly below the role word (never above it) */}
+        {/* hero copy — the active role always sits inline with the fixed
+            "Hi! Sivaprakash is a" prefix; roles already passed stack up
+            above it, roles not yet reached stay dimmed below it */}
         <div
-          className="relative z-10 grid w-full max-w-4xl gap-y-2 px-6 sm:px-12"
+          className="relative z-10 grid w-full max-w-4xl gap-y-1 px-6 sm:px-12"
           style={{
             fontFamily: "var(--font-kalam)",
             gridTemplateColumns: "auto 1fr",
           }}
         >
+          <div /* column-1 spacer so the list above lands under the role word */ />
+          <div className="flex flex-col items-start gap-1 pb-1">
+            {before.map((role) => (
+              <span
+                key={role}
+                className="text-black/30 transition-opacity duration-500"
+                style={{ fontSize: "clamp(1.1rem, 2.5vw, 1.75rem)" }}
+              >
+                {role}
+              </span>
+            ))}
+          </div>
+
           <p
             className="col-span-2 grid grid-cols-subgrid items-baseline whitespace-nowrap font-bold leading-tight text-black"
             style={{ fontSize: "clamp(1.1rem, 4vw, 3.25rem)" }}
@@ -104,9 +119,9 @@ export default function Hero() {
             <span className="transition-all duration-500 ease-out">{active}</span>
           </p>
 
-          <div /* empty column-1 spacer so the list below lands under the role word */ />
-          <div className="flex flex-col items-start gap-1">
-            {others.map((role) => (
+          <div /* column-1 spacer so the list below lands under the role word */ />
+          <div className="flex flex-col items-start gap-1 pt-1">
+            {after.map((role) => (
               <span
                 key={role}
                 className="text-black/30 transition-opacity duration-500"
