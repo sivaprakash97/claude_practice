@@ -6,6 +6,17 @@ import { FRAME_COLORS, FRAME_LAYOUTS, ROLES } from "./heroData";
 const STEP_COUNT = ROLES.length;
 const STAGGER_MS = 70;
 const FADE_MS = 280;
+// Distance (in rem) from the active line to its nearest dimmed neighbor —
+// large enough to clear the active role's much bigger font — then a
+// smaller, even step for every row beyond that.
+const REEL_CLEARANCE_REM = 3.1;
+const REEL_STEP_REM = 1.9;
+
+function reelOffsetRem(offset: number) {
+  if (offset === 0) return 0;
+  const sign = offset > 0 ? 1 : -1;
+  return sign * (REEL_CLEARANCE_REM + (Math.abs(offset) - 1) * REEL_STEP_REM);
+}
 
 export default function Hero() {
   const sectionRef = useRef<HTMLElement>(null);
@@ -52,8 +63,6 @@ export default function Hero() {
   const layout = FRAME_LAYOUTS[step];
   const color = FRAME_COLORS[step];
   const active = ROLES[step];
-  const before = ROLES.slice(0, step);
-  const after = ROLES.slice(step + 1);
   const article = /^[aeiou]/i.test(active) ? "an" : "a";
 
   return (
@@ -88,49 +97,45 @@ export default function Hero() {
           ))}
         </div>
 
-        {/* hero copy — the active role always sits inline with the fixed
-            "Hi! Sivaprakash is a" prefix; roles already passed stack up
-            above it, roles not yet reached stay dimmed below it */}
+        {/* hero copy — "Hi! Sivaprakash is a" plus the active role is plain,
+            in-flow content, so nothing else on the page can ever move it.
+            The other roles live on an absolutely-positioned reel anchored
+            to the active role's own position, sliding past it as you
+            scroll without affecting the sentence's layout at all. */}
         <div
-          className="relative z-10 grid w-full max-w-4xl gap-y-1 px-6 sm:px-12"
-          style={{
-            fontFamily: "var(--font-kalam)",
-            gridTemplateColumns: "auto 1fr",
-          }}
+          className="relative z-10 w-full max-w-4xl px-6 sm:px-12"
+          style={{ fontFamily: "var(--font-kalam)" }}
         >
-          <div /* column-1 spacer so the list above lands under the role word */ />
-          <div className="flex flex-col items-start gap-1 pb-1">
-            {before.map((role) => (
-              <span
-                key={role}
-                className="text-black/30 transition-opacity duration-500"
-                style={{ fontSize: "clamp(1.1rem, 2.5vw, 1.75rem)" }}
-              >
-                {role}
-              </span>
-            ))}
-          </div>
-
           <p
-            className="col-span-2 grid grid-cols-subgrid items-baseline whitespace-nowrap font-bold leading-tight text-black"
+            className="flex items-baseline whitespace-nowrap font-bold leading-tight text-black"
             style={{ fontSize: "clamp(1.1rem, 4vw, 3.25rem)" }}
           >
             <span>Hi! Sivaprakash is {article}&nbsp;</span>
-            <span className="transition-all duration-500 ease-out">{active}</span>
-          </p>
+            <span className="relative inline-block">
+              {/* visible text — this is the only thing that sets the
+                  sentence's size; everything below is absolutely
+                  positioned and cannot affect it */}
+              {active}
 
-          <div /* column-1 spacer so the list below lands under the role word */ />
-          <div className="flex flex-col items-start gap-1 pt-1">
-            {after.map((role) => (
-              <span
-                key={role}
-                className="text-black/30 transition-opacity duration-500"
-                style={{ fontSize: "clamp(1.1rem, 2.5vw, 1.75rem)" }}
-              >
-                {role}
-              </span>
-            ))}
-          </div>
+              {ROLES.map((role, i) => {
+                const offset = i - step;
+                return (
+                  <span
+                    key={role}
+                    aria-hidden={offset === 0}
+                    className="pointer-events-none absolute left-0 top-0 whitespace-nowrap font-normal text-black/30 transition-all duration-500 ease-out"
+                    style={{
+                      fontSize: "clamp(1.1rem, 2.5vw, 1.75rem)",
+                      transform: `translateY(${reelOffsetRem(offset)}rem)`,
+                      opacity: offset === 0 ? 0 : 1,
+                    }}
+                  >
+                    {role}
+                  </span>
+                );
+              })}
+            </span>
+          </p>
         </div>
 
         {/* progress hint */}
