@@ -4,10 +4,19 @@ import { useEffect, useRef, useState } from "react";
 import { FRAME_COLORS, FRAME_LAYOUTS, ROLES } from "./heroData";
 
 const STEP_COUNT = ROLES.length;
+const STAGGER_MS = 70;
+const FADE_MS = 280;
 
 export default function Hero() {
   const sectionRef = useRef<HTMLElement>(null);
   const [step, setStep] = useState(0);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    // triggers the staggered entrance fade on first paint
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -42,6 +51,10 @@ export default function Hero() {
 
   const layout = FRAME_LAYOUTS[step];
   const color = FRAME_COLORS[step];
+  const before = ROLES.slice(0, step);
+  const active = ROLES[step];
+  const after = ROLES.slice(step + 1);
+  const article = /^[aeiou]/i.test(active) ? "an" : "a";
 
   return (
     <section
@@ -49,20 +62,24 @@ export default function Hero() {
       className="relative"
       style={{ height: `${STEP_COUNT * 100}vh` }}
     >
-      <div className="sticky top-0 flex h-screen w-full items-center justify-center overflow-hidden bg-white dark:bg-black">
+      <div className="sticky top-0 flex h-screen w-full items-center justify-center overflow-hidden bg-white">
         {/* proof-of-work frames */}
         <div className="pointer-events-none absolute inset-0">
           {layout.map((frame, i) => (
             <div
               key={i}
-              className="absolute rounded-md border-2 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
+              className="absolute rounded-md border-2 ease-[cubic-bezier(0.16,1,0.3,1)]"
               style={{
                 top: `${frame.top}%`,
                 left: `${frame.left}%`,
                 width: `${frame.width}%`,
                 height: `${frame.height}%`,
                 borderColor: color,
-                opacity: frame.visible ? 0.9 : 0,
+                opacity: mounted && frame.visible ? 0.85 : 0,
+                transitionProperty:
+                  "top, left, width, height, transform, border-color, opacity",
+                transitionDuration: `700ms, 700ms, 700ms, 700ms, 700ms, 500ms, ${FADE_MS}ms`,
+                transitionDelay: `0ms, 0ms, 0ms, 0ms, 0ms, 0ms, ${i * STAGGER_MS}ms`,
                 transform: `rotate(${frame.visible ? frame.rotate : 0}deg) scale(${
                   frame.visible ? 1 : 0.85
                 })`,
@@ -72,27 +89,36 @@ export default function Hero() {
         </div>
 
         {/* hero copy */}
-        <div className="relative z-10 flex flex-col items-center px-6 text-center">
-          <p className="text-lg text-zinc-500 dark:text-zinc-400 sm:text-xl">
-            Hi! Sivaprakash is a
+        <div
+          className="relative z-10 flex flex-col items-center gap-2 px-6 text-center"
+          style={{ fontFamily: "var(--font-kalam)" }}
+        >
+          {before.map((role) => (
+            <span
+              key={role}
+              className="text-black/30 transition-opacity duration-500"
+              style={{ fontSize: "clamp(1.1rem, 2.5vw, 1.75rem)" }}
+            >
+              {role}
+            </span>
+          ))}
+
+          <p
+            className="font-bold leading-tight text-black transition-all duration-500 ease-out"
+            style={{ fontSize: "clamp(1.6rem, 5vw, 3.25rem)" }}
+          >
+            Hi! Sivaprakash is {article} {active}
           </p>
-          <div className="mt-3 flex flex-col items-center gap-1 sm:gap-2">
-            {ROLES.map((role, i) => {
-              const active = i === step;
-              return (
-                <span
-                  key={role}
-                  className="font-semibold tracking-tight text-black transition-all duration-500 ease-out dark:text-white"
-                  style={{
-                    opacity: active ? 1 : 0.28,
-                    fontSize: active ? "clamp(2rem, 6vw, 4rem)" : "clamp(1.1rem, 2.5vw, 1.75rem)",
-                  }}
-                >
-                  {role}
-                </span>
-              );
-            })}
-          </div>
+
+          {after.map((role) => (
+            <span
+              key={role}
+              className="text-black/30 transition-opacity duration-500"
+              style={{ fontSize: "clamp(1.1rem, 2.5vw, 1.75rem)" }}
+            >
+              {role}
+            </span>
+          ))}
         </div>
 
         {/* progress hint */}
@@ -103,7 +129,7 @@ export default function Hero() {
               className="h-1.5 rounded-full transition-all duration-500"
               style={{
                 width: i === step ? "1.75rem" : "0.4rem",
-                backgroundColor: i === step ? color : "rgba(120,120,120,0.35)",
+                backgroundColor: i === step ? color : "rgba(0,0,0,0.15)",
               }}
             />
           ))}
