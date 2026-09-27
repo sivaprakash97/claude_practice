@@ -50,14 +50,18 @@ export default function ResearchView({
   stage,
   onStageChange,
   onBack,
+  initialSelected = [],
+  initialLogOpen = false,
 }: {
   stage: ResearchStage;
   onStageChange: (stage: ResearchStage) => void;
   onBack: () => void;
+  initialSelected?: string[];
+  initialLogOpen?: boolean;
 }) {
   const [answers, setAnswers] = useState<Answers>(emptyAnswers);
-  const [selected, setSelected] = useState<string[]>([]);
-  const [logOpen, setLogOpen] = useState(false);
+  const [selected, setSelected] = useState<string[]>(initialSelected);
+  const [logOpen, setLogOpen] = useState(initialLogOpen);
   const scrollRef = useRef<HTMLDivElement>(null);
   const showResults = useCallback(() => onStageChange("results"), [onStageChange]);
   const finishAssigning = useCallback(() => onStageChange("assigned"), [onStageChange]);
