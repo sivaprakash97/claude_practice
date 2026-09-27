@@ -1,5 +1,14 @@
 import { ChevronSort, Filter, Search } from "@carbon/icons-react";
-import { REQUESTS, type Approver, type RequestStatus } from "./data";
+import {
+  APPROVER_PHOTO,
+  EXTRA_SEATS,
+  REQUESTS,
+  SEAT_PRICE,
+  type Approver,
+  type RequestRow,
+  type RequestStatus,
+  type SeatRequest,
+} from "./data";
 
 const STATUS_STYLES: Record<RequestStatus, string> = {
   "Pending Approval": "bg-[#fffaeb] border-[#fec84b] text-[#b54708]",
@@ -44,7 +53,27 @@ function ApproverCell({ approver }: { approver: Approver }) {
   );
 }
 
-export default function RequestsTable() {
+// A submitted seat upgrade request as it appears in the table.
+const toRow = (request: SeatRequest): RequestRow => ({
+  number: request.number,
+  name: "Runway",
+  status: "Pending Approval",
+  progress: 20,
+  approver: { name: "Dwayne Smith", initials: "DS", photo: APPROVER_PHOTO },
+  amount: `USD ${EXTRA_SEATS * SEAT_PRICE}`,
+  date: "Jun 24, 2025",
+  program: "Software",
+});
+
+export default function RequestsTable({
+  created = [],
+  onOpen,
+}: {
+  /** Submitted seat upgrade requests, newest first. */
+  created?: SeatRequest[];
+  onOpen?: (number: string) => void;
+}) {
+  const rows = [...created.map(toRow), ...REQUESTS];
   return (
     <section className="flex min-h-0 flex-1 flex-col gap-3.5">
       <div className="flex items-center justify-between">
@@ -95,33 +124,43 @@ export default function RequestsTable() {
             </tr>
           </thead>
           <tbody className="font-medium text-grey-700">
-            {REQUESTS.map((r) => (
-              <tr key={r.number} className="[&>td]:h-11 [&>td]:border-b [&>td]:border-grey-200 [&>td]:whitespace-nowrap">
-                <td className="px-6">
-                  <Checkbox />
-                </td>
-                <td className="pl-3 pr-6 text-[#33312e]">{r.number}</td>
-                <td className="pl-3 pr-6">{r.name}</td>
-                <td className="pl-3 pr-6">
-                  <span
-                    className={`inline-flex rounded-3xl border px-3 py-1 text-xs font-semibold leading-[1.4] ${STATUS_STYLES[r.status]}`}
-                  >
-                    {r.status}
-                  </span>
-                </td>
-                <td className="px-6">
-                  <span className="block h-5 w-full bg-grey-200">
-                    <span className="block h-full bg-[#00b86b]" style={{ width: `${r.progress}%` }} />
-                  </span>
-                </td>
-                <td className="pl-3 pr-6">
-                  <ApproverCell approver={r.approver} />
-                </td>
-                <td className="pl-3 pr-6">{r.amount}</td>
-                <td className="pl-3 pr-6">{r.date}</td>
-                <td className="pl-3 pr-6">{r.program}</td>
-              </tr>
-            ))}
+            {rows.map((r, i) => {
+              const isCreated = i < created.length;
+              return (
+                <tr
+                  key={r.number}
+                  onClick={isCreated ? () => onOpen?.(r.number) : undefined}
+                  // The newest request stays highlighted at the top until another one is created.
+                  className={`[&>td]:h-11 [&>td]:border-b [&>td]:border-grey-200 [&>td]:whitespace-nowrap ${
+                    isCreated ? "cursor-pointer [&>td]:transition-colors hover:[&>td]:bg-[#fef6dc]" : ""
+                  } ${i === 0 && isCreated ? "fx-fade-in [&>td]:bg-[#fffaeb]" : ""}`}
+                >
+                  <td className="px-6">
+                    <Checkbox />
+                  </td>
+                  <td className="pl-3 pr-6 text-[#33312e]">{r.number}</td>
+                  <td className="pl-3 pr-6">{r.name}</td>
+                  <td className="pl-3 pr-6">
+                    <span
+                      className={`inline-flex rounded-3xl border px-3 py-1 text-xs font-semibold leading-[1.4] ${STATUS_STYLES[r.status]}`}
+                    >
+                      {r.status}
+                    </span>
+                  </td>
+                  <td className="px-6">
+                    <span className="block h-5 w-full bg-grey-200">
+                      <span className="block h-full bg-[#00b86b]" style={{ width: `${r.progress}%` }} />
+                    </span>
+                  </td>
+                  <td className="pl-3 pr-6">
+                    <ApproverCell approver={r.approver} />
+                  </td>
+                  <td className="pl-3 pr-6">{r.amount}</td>
+                  <td className="pl-3 pr-6">{r.date}</td>
+                  <td className="pl-3 pr-6">{r.program}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

@@ -14,7 +14,7 @@ import {
   Time,
 } from "@carbon/icons-react";
 import type { CarbonIconType } from "@carbon/icons-react";
-import { BASE_PROMPT, FLOW_PROMPT, SUGGESTIONS } from "./data";
+import { BASE_PROMPT, FLOW_PROMPT, SUGGESTIONS, type SeatRequest } from "./data";
 import FluxbyMark from "./FluxbyMark";
 import RequestsTable from "./RequestsTable";
 
@@ -33,7 +33,15 @@ const MODES: { label: string; icon: CarbonIconType }[] = [
 
 const normalize = (s: string) => s.replace(/[’‘]/g, "'").replace(/\s+/g, " ").trim().toLowerCase();
 
-export default function HomeView({ onStartResearch }: { onStartResearch: () => void }) {
+export default function HomeView({
+  onStartResearch,
+  requests,
+  onOpenRequest,
+}: {
+  onStartResearch: () => void;
+  requests: SeatRequest[];
+  onOpenRequest: (number: string) => void;
+}) {
   const [text, setText] = useState("");
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
@@ -197,7 +205,7 @@ export default function HomeView({ onStartResearch }: { onStartResearch: () => v
           </section>
         </div>
 
-        <RequestsTable />
+        <RequestsTable created={requests} onOpen={onOpenRequest} />
       </main>
     </div>
   );
