@@ -16,7 +16,7 @@ export default function ProcurementFlow() {
       {stage === "home" ? (
         <HomeView onStartResearch={() => setStage("questions")} />
       ) : (
-        <ResearchView key="research" stage={stage} onStageChange={setStage} />
+        <ResearchView key="research" stage={stage} onStageChange={setStage} onBack={() => setStage("home")} />
       )}
     </div>
   );

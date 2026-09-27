@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, Attachment, Checkmark, Renew, StopFilledAlt } from "@carbon/icons-react";
+import { ArrowRight, Attachment, Checkmark, ChevronLeft, Renew, StopFilledAlt } from "@carbon/icons-react";
 import {
   ACCESS_TITLE,
   ALL_MEMBERS,
@@ -49,9 +49,11 @@ const TABS = ["Chat", "Steps", "Sources"];
 export default function ResearchView({
   stage,
   onStageChange,
+  onBack,
 }: {
   stage: ResearchStage;
   onStageChange: (stage: ResearchStage) => void;
+  onBack: () => void;
 }) {
   const [answers, setAnswers] = useState<Answers>(emptyAnswers);
   const [selected, setSelected] = useState<string[]>([]);
@@ -115,6 +117,7 @@ export default function ResearchView({
                   title={FLOW_PROMPT}
                   tabs={reached(stage, "results") ? TABS : []}
                   last={!reached(stage, "assign")}
+                  onBack={onBack}
                 >
                   {stage === "questions" && (
                     <Questions answers={answers} setAnswers={setAnswers} onSubmit={() => onStageChange("thinking")} />
@@ -227,18 +230,30 @@ function Turn({
   title,
   tabs,
   last,
+  onBack,
   children,
 }: {
   id: string;
   title: string;
   tabs: string[];
   last: boolean;
+  onBack?: () => void;
   children: React.ReactNode;
 }) {
   return (
     // The latest turn fills the viewport so it can scroll flush to the top.
     <section id={id} className={last ? "min-h-[calc(100vh-190px)]" : "pb-10"}>
       <div className="sticky top-0 z-10 bg-grey-50 pt-8">
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="mb-6 flex items-center gap-1 text-sm font-medium text-grey-450 transition-colors hover:text-grey-700"
+          >
+            <ChevronLeft size={16} />
+            Back
+          </button>
+        )}
         <h2 className="pb-4 text-2xl font-bold leading-[1.2] text-black">{title}</h2>
         <div className="flex border-b border-grey-300">
           {tabs.map((tab, i) => (
@@ -274,7 +289,7 @@ function SectionRail({
       let current = 0;
       anchors.forEach((a, i) => {
         const target = document.getElementById(a.id);
-        if (target && i > 0 && target.getBoundingClientRect().top - el.getBoundingClientRect().top < 220) {
+        if (target && i > 0 && target.getBoundingClientRect().top - el.getBoundingClientRect().top < 260) {
           current = i;
         }
       });
@@ -290,7 +305,7 @@ function SectionRail({
       const el = scrollRef.current;
       const target = document.getElementById(anchors[i].id);
       if (!el || !target) return;
-      const offset = anchors[i].turn ? 0 : 150;
+      const offset = anchors[i].turn ? 0 : 200;
       const top = el.scrollTop + target.getBoundingClientRect().top - el.getBoundingClientRect().top - offset;
       el.scrollTo({ top: i === 0 ? 0 : top, behavior: "smooth" });
     },
