@@ -46,7 +46,7 @@ export const THINKING_STEPS = [
   "Checking if your team already uses the tool or has something similar...",
 ];
 
-export const THINKING_STEP_MS = 1750;
+export const THINKING_STEP_MS = 500;
 export const THINKING_SECONDS = Math.round((THINKING_STEPS.length * THINKING_STEP_MS) / 1000);
 
 export type Product = {
@@ -87,9 +87,9 @@ export const PRODUCTS: Product[] = [
 ];
 
 export const FOLLOW_UPS = [
-  "Get access for Runway",
+  "Request license for Runway",
   "Give me a comparison between those 4 tools",
-  "Show me other alternatives",
+  "Show me Runway’s pricing plans",
 ];
 
 export type RequestStatus = "Pending Approval" | "Approved" | "Rejected" | "Draft";
@@ -131,7 +131,7 @@ export const REQUESTS: RequestRow[] = [
 export const ACCESS_TITLE = "Get access for Runway license";
 export const ASSIGNED_TITLE = "Runway seats successfully assigned";
 export const RUNWAY_SEATS = 5;
-export const ASSIGNING_MS = 3000;
+export const ASSIGNING_MS = 2000;
 
 export type Member = {
   id: string;
@@ -173,3 +173,105 @@ export const LICENSE_LOG = {
   department: "Marketing Design",
   assignedDate: "June 24, 2025",
 } as const;
+
+// ── More seats flow (edge case: asking for more seats than are available) ──
+
+export const MORE_SEATS_PROMPT =
+  "There’s only 5 seats left for Runway? I have 10 members in my team. I want 5 more seats.";
+
+export const PROCEED_OPTIONS = [
+  "I’ll have 5 seats for now",
+  "Find alternatives with 10 seats available",
+  "Assign the available 5 seats now, request 5 seats more for approval",
+];
+
+export const AFTER_ASSIGN_OPTIONS = ["Yes, proceed with the request for 5 extra seats", "I’ll do it later"];
+
+export const UPGRADE_TITLE = "Yes, proceed with the request for 5 extra Runway seats";
+export const CREATING_MS = 2000;
+export const EXTRA_SEATS = 5;
+export const SEAT_PRICE = 150;
+
+export type ProcessApprover = "Dwayne Smith" | "Nina Plath";
+export const APPROVER_PHOTO = "/procurement/avatar-dwayne.png";
+
+export const APPROVAL_PROCESS: { title: string; description: string; approver: ProcessApprover; duration: string }[] = [
+  {
+    title: "Finance Approval",
+    description: "Request involves additional costs, so budget availability and spend limits will be reviewed.",
+    approver: "Dwayne Smith",
+    duration: "1 day",
+  },
+  {
+    title: "Procurement Approval",
+    description:
+      "Request affects vendor contracts (eg: increase in seats, plan upgrade, renewal impact) so the Procurement team will validate the terms.",
+    approver: "Nina Plath",
+    duration: "1 week",
+  },
+  {
+    title: "Vendor Negotiations",
+    description: "Negotiations with the vendor will occur to buy extra seats.",
+    approver: "Nina Plath",
+    duration: "1 week",
+  },
+  {
+    title: "Seats Purchase",
+    description: "A Purchase Order will be shared with the vendor for required seats.",
+    approver: "Nina Plath",
+    duration: "1 day",
+  },
+  {
+    title: "Implementation",
+    description:
+      "Procurement team will coordinate communication with vendor and your team to implement the tool according to your needs",
+    approver: "Nina Plath",
+    duration: "2 days",
+  },
+];
+
+// Teammates still waiting for Runway; the design reuses the recommended members' photos for them.
+export const EXTRA_MEMBERS: Member[] = [
+  { id: "jordan", name: "Jordan Taylor", role: "Video editor", email: "jordan.taylor@acme.com", photo: "/procurement/member-ashley.png", initials: "JT" },
+  { id: "samantha", name: "Samantha Lee", role: "Video editor", email: "samantha.lee@acme.com", photo: "/procurement/member-riley.png", initials: "SL" },
+  { id: "carlos", name: "Carlos Mendoza", role: "Video editor", email: "carlos.mendoza@acme.com", photo: "/procurement/member-mellisa.png", initials: "CM" },
+  { id: "tara", name: "Tara Brooks", role: "Motion Graphics Designer", email: "tara.brooks@acme.com", photo: "/procurement/member-nikita.png", initials: "TB" },
+  { id: "ethan", name: "Ethan Carter", role: "3D Animator", email: "ethan.carter@acme.com", photo: "/procurement/member-liam.png", initials: "EC" },
+];
+
+export const JUSTIFICATION = {
+  before: "Our design team will utilize Runway on a daily basis to enhance our AI-driven video workflows. ",
+  bold: "As we expand our capabilities, we are planning to scale up to 10 users.",
+  after:
+    " This powerful tool will be instrumental in creating engaging product explainers, informative tutorial videos, and eye-catching social media advertisements.",
+};
+
+export type SeatRequest = { number: string; preassigned: Member[]; done?: boolean };
+
+// The first request uses the number from the design; later ones continue after the existing SUR rows.
+export const nextRequestNumber = (created: number) => `SUR# ${created === 0 ? 1029 : 1033 + created}`;
+
+export type ProgressStep = {
+  title: string;
+  status: "done" | "active" | "todo";
+  note: string;
+  approver: ProcessApprover;
+  duration?: string;
+  followUp?: boolean;
+};
+
+export const PROGRESS_PENDING: ProgressStep[] = [
+  { title: "Finance Approval", status: "done", note: "Completed on June 25,2025", approver: "Dwayne Smith", duration: "1 day" },
+  { title: "Procurement Approval", status: "active", note: "In progress · 3 weeks", approver: "Nina Plath", followUp: true },
+  { title: "Vendor negotiations", status: "todo", note: "Not started · 1 week", approver: "Nina Plath" },
+  { title: "Seats Purchase", status: "todo", note: "Not started · 2 days", approver: "Nina Plath" },
+  { title: "Implementation", status: "todo", note: "Not started · 2 days", approver: "Nina Plath" },
+];
+
+export const PROGRESS_DONE: ProgressStep[] = [
+  { title: "Finance Approval", status: "done", note: "Completed on June 25,2025", approver: "Dwayne Smith", duration: "1 day" },
+  { title: "Procurement Approval", status: "done", note: "Completed on July 2,2025", approver: "Nina Plath" },
+  { title: "Vendor negotiations", status: "done", note: "Completed on July 9,2025", approver: "Nina Plath" },
+  { title: "Seats Purchase", status: "done", note: "Completed on July 10,2025", approver: "Nina Plath" },
+  { title: "Implementation", status: "done", note: "Completed on July 12,2025", approver: "Nina Plath" },
+];

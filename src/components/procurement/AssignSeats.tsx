@@ -12,22 +12,153 @@ export default function AssignSeats({
   selected,
   onChange,
   onGiveAccess,
+  limit,
+  recommended = RECOMMENDED_MEMBERS,
+  others = OTHER_MEMBERS,
+  seats = RUNWAY_SEATS,
+  bare = false,
 }: {
   selected: string[];
   onChange: (ids: string[]) => void;
-  onGiveAccess: () => void;
+  /** Omit for a picker that only edits the selection (no Give access footer). */
+  onGiveAccess?: () => void;
+  /** Maximum selectable; further rows are disabled once it is reached. */
+  limit?: number;
+  recommended?: Member[];
+  others?: Member[];
+  seats?: number;
+  /** Render without the card and seats header, for use inside a document. */
+  bare?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState({ recommended: true, others: true });
+  // The list stays collapsed until the search field is first clicked.
+  const [expanded, setExpanded] = useState(selected.length > 0);
 
   const q = query.trim().toLowerCase();
-  const recommended = RECOMMENDED_MEMBERS.filter((m) => matches(m, q));
-  const others = OTHER_MEMBERS.filter((m) => matches(m, q));
-  // Over-assigning is allowed for now; its warning state is still to be designed.
-  const seatsLeft = Math.max(0, RUNWAY_SEATS - selected.length);
+  const recommendedMatches = recommended.filter((m) => matches(m, q));
+  const otherMatches = others.filter((m) => matches(m, q));
+  // Without a limit, over-assigning is allowed and the count just stops at 0.
+  const seatsLeft = Math.max(0, seats - selected.length);
+  const full = limit !== undefined && selected.length >= limit;
 
-  const toggle = (id: string) =>
-    onChange(selected.includes(id) ? selected.filter((s) => s !== id) : [...selected, id]);
+  const toggle = (id: string) => {
+    if (selected.includes(id)) onChange(selected.filter((s) => s !== id));
+    else if (!full) onChange([...selected, id]);
+  };
+
+  const rowState = (id: string) => {
+    const isSelected = selected.includes(id);
+    return { isSelected, disabled: full && !isSelected };
+  };
+
+  const picker = (
+    <>
+      <label className="flex h-12 items-center gap-2 rounded border border-grey-300 bg-white px-3 focus-within:border-grey-450">
+        <Search size={14} className="shrink-0 text-grey-600" />
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onFocus={() => setExpanded(true)}
+          onClick={() => setExpanded(true)}
+          placeholder={bare ? "Choose team members" : "Search for team members"}
+          className="flex-1 bg-transparent text-base font-medium text-grey-600 outline-none placeholder:text-grey-400"
+        />
+      </label>
+
+      {expanded && (
+        <div
+          className={`fx-fade-up flex flex-col overflow-hidden rounded border border-grey-300 bg-white shadow-[0_12px_16px_-4px_rgba(16,24,40,0.08),0_4px_6px_-2px_rgba(16,24,40,0.03)] ${
+            bare ? "max-h-[300px]" : "h-[356px]"
+          }`}
+        >
+          <div className="fx-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-2">
+            {recommendedMatches.length > 0 && (
+              <Group
+                label="Recommended team members"
+                open={open.recommended}
+                onToggle={() => setOpen((o) => ({ ...o, recommended: !o.recommended }))}
+              >
+                <div className="flex flex-col gap-0.5">
+                  {recommendedMatches.map((m) => {
+                    const { isSelected, disabled } = rowState(m.id);
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        aria-pressed={isSelected}
+                        disabled={disabled}
+                        onClick={() => toggle(m.id)}
+                        className={`flex items-center gap-2 rounded border-b border-grey-200 p-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                          isSelected ? "bg-brand-tint" : "enabled:hover:bg-grey-100"
+                        }`}
+                      >
+                        <MemberAvatar member={m} />
+                        <span className="flex flex-col font-medium">
+                          <span className="text-sm leading-normal text-grey-700">{m.name}</span>
+                          <span className={`text-xs leading-[1.4] ${isSelected ? "text-[#658676]" : "text-grey-450"}`}>
+                            {m.role}
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </Group>
+            )}
+
+            {otherMatches.length > 0 && (
+              <Group
+                label="Others"
+                open={open.others}
+                onToggle={() => setOpen((o) => ({ ...o, others: !o.others }))}
+                bordered
+              >
+                <div className="flex flex-col">
+                  {otherMatches.map((m) => {
+                    const { isSelected, disabled } = rowState(m.id);
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        aria-pressed={isSelected}
+                        disabled={disabled}
+                        onClick={() => toggle(m.id)}
+                        className={`flex items-center gap-1 rounded p-2 text-left text-base font-medium leading-normal transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                          isSelected ? "bg-brand-tint" : "enabled:hover:bg-grey-100"
+                        }`}
+                      >
+                        <span className="text-grey-700">{m.name}</span>
+                        <span className="truncate text-grey-450">{m.email}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </Group>
+            )}
+
+            {recommendedMatches.length === 0 && otherMatches.length === 0 && (
+              <p className="py-6 text-center text-sm font-medium text-grey-450">No team members match “{query}”</p>
+            )}
+          </div>
+
+          {onGiveAccess && selected.length > 0 && (
+            <div className="border-t border-grey-300 bg-white p-4">
+              <button
+                type="button"
+                onClick={onGiveAccess}
+                className="fx-fade-up w-full rounded bg-brand px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+              >
+                Give access ({selected.length} selected)
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+
+  if (bare) return <div className="flex flex-col gap-2">{picker}</div>;
 
   return (
     <div className="flex flex-col gap-2 rounded-2xl border border-grey-200 bg-white p-4">
@@ -44,98 +175,7 @@ export default function AssignSeats({
           Clear selection
         </button>
       </div>
-
-      <label className="flex h-12 items-center gap-2 rounded border border-grey-300 bg-white px-3 focus-within:border-grey-450">
-        <Search size={14} className="shrink-0 text-grey-600" />
-        <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search for team members"
-          className="flex-1 bg-transparent text-base font-medium text-grey-600 outline-none placeholder:text-grey-400"
-        />
-      </label>
-
-      <div className="flex h-[356px] flex-col overflow-hidden rounded border border-grey-300 bg-white shadow-[0_12px_16px_-4px_rgba(16,24,40,0.08),0_4px_6px_-2px_rgba(16,24,40,0.03)]">
-        <div className="fx-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-2">
-          {recommended.length > 0 && (
-            <Group
-              label="Recommended team members"
-              open={open.recommended}
-              onToggle={() => setOpen((o) => ({ ...o, recommended: !o.recommended }))}
-            >
-              <div className="flex flex-col gap-0.5">
-                {recommended.map((m) => {
-                  const isSelected = selected.includes(m.id);
-                  return (
-                    <button
-                      key={m.id}
-                      type="button"
-                      aria-pressed={isSelected}
-                      onClick={() => toggle(m.id)}
-                      className={`flex items-center gap-2 rounded border-b border-grey-200 p-2 text-left transition-colors ${
-                        isSelected ? "bg-brand-tint" : "hover:bg-grey-100"
-                      }`}
-                    >
-                      <MemberAvatar member={m} />
-                      <span className="flex flex-col font-medium">
-                        <span className="text-sm leading-normal text-grey-700">{m.name}</span>
-                        <span className={`text-xs leading-[1.4] ${isSelected ? "text-[#658676]" : "text-grey-450"}`}>
-                          {m.role}
-                        </span>
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </Group>
-          )}
-
-          {others.length > 0 && (
-            <Group
-              label="Others"
-              open={open.others}
-              onToggle={() => setOpen((o) => ({ ...o, others: !o.others }))}
-              bordered
-            >
-              <div className="flex flex-col">
-                {others.map((m) => {
-                  const isSelected = selected.includes(m.id);
-                  return (
-                    <button
-                      key={m.id}
-                      type="button"
-                      aria-pressed={isSelected}
-                      onClick={() => toggle(m.id)}
-                      className={`flex items-center gap-1 rounded p-2 text-left text-base font-medium leading-normal transition-colors ${
-                        isSelected ? "bg-brand-tint" : "hover:bg-grey-100"
-                      }`}
-                    >
-                      <span className="text-grey-700">{m.name}</span>
-                      <span className="truncate text-grey-450">{m.email}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </Group>
-          )}
-
-          {recommended.length === 0 && others.length === 0 && (
-            <p className="py-6 text-center text-sm font-medium text-grey-450">No team members match “{query}”</p>
-          )}
-        </div>
-
-        {selected.length > 0 && (
-          <div className="border-t border-grey-300 bg-white p-4">
-            <button
-              type="button"
-              onClick={onGiveAccess}
-              className="fx-fade-up w-full rounded bg-brand px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-            >
-              Give access ({selected.length} selected)
-            </button>
-          </div>
-        )}
-      </div>
+      {picker}
     </div>
   );
 }

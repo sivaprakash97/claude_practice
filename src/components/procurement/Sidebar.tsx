@@ -26,15 +26,25 @@ const NAV: { label: string; icon: CarbonIconType; expandable?: boolean }[] = [
 
 const itemClass = "flex w-full items-center gap-2 rounded-lg px-2 py-3 text-sm font-medium leading-normal text-white";
 
-export default function Sidebar({ showNewBadge, onHome }: { showNewBadge: boolean; onHome: () => void }) {
+export type SidebarItem = "home" | "fluxby" | "requests";
+
+export default function Sidebar({
+  active,
+  showNewBadge,
+  onHome,
+}: {
+  active: SidebarItem;
+  showNewBadge: boolean;
+  onHome: () => void;
+}) {
   return (
     <aside className="sticky top-0 flex h-screen w-[184px] shrink-0 flex-col bg-grey-700">
       <div className="flex h-[54px] items-center justify-between border-b border-white/20 p-4">
-        <div className="flex items-center gap-1.5">
+        <button type="button" onClick={onHome} aria-label="acme home" className="flex items-center gap-1.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/procurement/acme-logo.png" alt="" width={17} height={17} className="rounded-full" />
           <span className="text-[17px] font-light leading-[1.4] text-white">acme</span>
-        </div>
+        </button>
         <SidePanelCloseFilled size={14} className="text-white" />
       </div>
 
@@ -44,7 +54,11 @@ export default function Sidebar({ showNewBadge, onHome }: { showNewBadge: boolea
             key={label}
             type="button"
             onClick={i === 0 ? onHome : undefined}
-            className={`${itemClass} ${i === 0 ? "bg-brand" : "cursor-default"} justify-between`}
+            className={`${itemClass} ${
+              (label === "Home" && active === "home") || (label === "Requests" && active === "requests")
+                ? "bg-brand"
+                : ""
+            } ${i === 0 ? "" : "cursor-default"} justify-between`}
           >
             <span className="flex items-center gap-2">
               <Icon size={14} />
@@ -56,7 +70,7 @@ export default function Sidebar({ showNewBadge, onHome }: { showNewBadge: boolea
       </nav>
 
       <div className="mt-auto flex flex-col gap-0.5 px-4 pb-4">
-        <div className={`${itemClass} justify-between`}>
+        <div className={`${itemClass} justify-between ${active === "fluxby" ? "bg-brand" : ""}`}>
           <span className="flex items-center gap-2">
             <CirclePacking size={16} />
             Fluxby AI
