@@ -1,8 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowRight, Attachment, Checkmark, Renew, StopFilledAlt } from "@carbon/icons-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ArrowRight, Attachment, Checkmark, ChevronLeft, Renew, StopFilledAlt } from "@carbon/icons-react";
 import {
+  ACCESS_TITLE,
+  ALL_MEMBERS,
+  ASSIGNED_TITLE,
+  ASSIGNING_MS,
   FLOW_PROMPT,
   FLOW_TITLE,
   FOLLOW_UPS,
@@ -13,41 +17,87 @@ import {
   THINKING_STEPS,
   type Product,
 } from "./data";
+import AssignSeats from "./AssignSeats";
 import FluxbyMark from "./FluxbyMark";
+import { LicenseLogCard, LicenseLogPanel } from "./LicenseLog";
 
-export type ResearchStage = "questions" | "thinking" | "results";
+export type ResearchStage = "questions" | "thinking" | "results" | "assign" | "assigning" | "assigned";
+
+const STAGE_ORDER: ResearchStage[] = ["questions", "thinking", "results", "assign", "assigning", "assigned"];
+const reached = (stage: ResearchStage, target: ResearchStage) =>
+  STAGE_ORDER.indexOf(stage) >= STAGE_ORDER.indexOf(target);
 
 type Answers = Record<string, { selected: string[]; other: boolean; otherText: string }>;
 
 const emptyAnswers = (): Answers =>
   Object.fromEntries(QUESTIONS.map((q) => [q.id, { selected: [], other: false, otherText: "" }]));
 
-type Anchor = { id: string; label: string };
+// A rail anchor is either a whole conversation turn (scrolled flush to the top)
+// or a heading inside a turn (scrolled to sit below that turn's sticky header).
+type Anchor = { id: string; label: string; turn: boolean };
 
-const PROMPT_ANCHOR: Anchor = { id: "fx-prompt", label: FLOW_PROMPT };
-const PROMPT_ANCHORS: Anchor[] = [PROMPT_ANCHOR];
-const RESULT_ANCHORS: Anchor[] = [
-  PROMPT_ANCHOR,
-  { id: "fx-catalogue", label: "Product catalogue (4 matches)" },
-  { id: "fx-recommendation", label: "Runway AI is your best choice" },
-];
+const ANCHORS = {
+  prompt: { id: "fx-prompt", label: FLOW_PROMPT, turn: true },
+  catalogue: { id: "fx-catalogue", label: "Product catalogue (4 matches)", turn: false },
+  recommendation: { id: "fx-recommendation", label: "Runway AI is your best choice", turn: false },
+  access: { id: "fx-access", label: ACCESS_TITLE, turn: true },
+  assigned: { id: "fx-assigned", label: ASSIGNED_TITLE, turn: true },
+} satisfies Record<string, Anchor>;
+
+const TABS = ["Chat", "Steps", "Sources"];
 
 export default function ResearchView({
   stage,
   onStageChange,
+  onBack,
+  initialSelected = [],
+  initialLogOpen = false,
 }: {
   stage: ResearchStage;
   onStageChange: (stage: ResearchStage) => void;
+  onBack: () => void;
+  initialSelected?: string[];
+  initialLogOpen?: boolean;
 }) {
   const [answers, setAnswers] = useState<Answers>(emptyAnswers);
+  const [selected, setSelected] = useState<string[]>(initialSelected);
+  const [logOpen, setLogOpen] = useState(initialLogOpen);
   const scrollRef = useRef<HTMLDivElement>(null);
   const showResults = useCallback(() => onStageChange("results"), [onStageChange]);
+  const finishAssigning = useCallback(() => onStageChange("assigned"), [onStageChange]);
 
+  // New turns scroll into view; the first turn's own stages start from the top.
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: 0 });
+    const el = scrollRef.current;
+    if (!el) return;
+    const turnId = stage === "assign" ? ANCHORS.access.id : stage === "assigned" ? ANCHORS.assigned.id : null;
+    const target = turnId && document.getElementById(turnId);
+    if (!target) {
+      if (!reached(stage, "assign")) el.scrollTo({ top: 0 });
+      return;
+    }
+    const top = el.scrollTop + target.getBoundingClientRect().top - el.getBoundingClientRect().top;
+    el.scrollTo({ top, behavior: "smooth" });
   }, [stage]);
 
-  const anchors = stage === "results" ? RESULT_ANCHORS : PROMPT_ANCHORS;
+  // Opening or closing the log reflows the chat column, so keep the success turn in view.
+  useEffect(() => {
+    const el = scrollRef.current;
+    const target = document.getElementById(ANCHORS.assigned.id);
+    if (!el || !target) return;
+    el.scrollTo({ top: el.scrollTop + target.getBoundingClientRect().top - el.getBoundingClientRect().top });
+  }, [logOpen]);
+
+  const anchors = useMemo(() => {
+    const list: Anchor[] = [ANCHORS.prompt];
+    if (reached(stage, "results")) list.push(ANCHORS.catalogue, ANCHORS.recommendation);
+    if (reached(stage, "assign")) list.push(ANCHORS.access);
+    if (reached(stage, "assigned")) list.push(ANCHORS.assigned);
+    return list;
+  }, [stage]);
+
+  const assignedMembers = ALL_MEMBERS.filter((m) => selected.includes(m.id));
+  const content = logOpen ? "w-full pl-14 pr-12" : "mx-auto w-[580px] max-w-[calc(100%-96px)]";
 
   return (
     <div className="flex h-screen min-w-0 flex-1 flex-col">
@@ -59,65 +109,171 @@ export default function ResearchView({
         <h1 className="text-base font-semibold text-grey-700">{FLOW_TITLE}</h1>
       </header>
 
-      <div className="relative min-h-0 flex-1">
-        <SectionRail anchors={anchors} scrollRef={scrollRef} />
+      <div className="flex min-h-0 flex-1">
+        <div className={`flex min-w-0 flex-col ${logOpen ? "w-[466px] shrink-0" : "flex-1"}`}>
+          <div className="relative min-h-0 flex-1">
+            <SectionRail anchors={anchors} scrollRef={scrollRef} />
 
-        <div ref={scrollRef} className="fx-scrollbar h-full overflow-y-auto">
-          <div className="mx-auto w-[580px] max-w-[calc(100%-96px)] pb-16">
-            <div id={PROMPT_ANCHOR.id} className="sticky top-0 z-10 bg-grey-50 pt-8">
-              <h2 className="pb-4 text-2xl font-bold leading-[1.2] text-black">{FLOW_PROMPT}</h2>
-              <div className="flex border-b border-grey-300">
-                {stage === "results" &&
-                  ["Chat", "Steps", "Sources"].map((tab, i) => (
-                    <span
-                      key={tab}
-                      className={`w-16 p-2 text-center text-xs leading-[1.4] ${
-                        i === 0 ? "border-b-4 border-brand font-bold text-grey-600" : "font-medium text-grey-500"
-                      }`}
-                    >
-                      {tab}
-                    </span>
-                  ))}
+            <div ref={scrollRef} className="fx-scrollbar h-full overflow-y-auto">
+              <div className={`${content} pb-16`}>
+                <Turn
+                  id={ANCHORS.prompt.id}
+                  title={FLOW_PROMPT}
+                  tabs={reached(stage, "results") ? TABS : []}
+                  last={!reached(stage, "assign")}
+                  onBack={onBack}
+                >
+                  {stage === "questions" && (
+                    <Questions answers={answers} setAnswers={setAnswers} onSubmit={() => onStageChange("thinking")} />
+                  )}
+                  {stage === "thinking" && <Thinking onDone={showResults} />}
+                  {reached(stage, "results") && (
+                    <Results onGetAccess={stage === "results" ? () => onStageChange("assign") : undefined} />
+                  )}
+                </Turn>
+
+                {reached(stage, "assign") && (
+                  <Turn id={ANCHORS.access.id} title={ACCESS_TITLE} tabs={TABS} last={!reached(stage, "assigned")}>
+                    <div className="flex flex-col gap-4 pt-6">
+                      {stage === "assign" && (
+                        <p className="fx-fade-up text-base font-medium leading-normal text-grey-600">
+                          Sure thing, let’s help you assign Runway seats to your team members.
+                        </p>
+                      )}
+                      {stage === "assign" && (
+                        <AssignSeats
+                          selected={selected}
+                          onChange={setSelected}
+                          onGiveAccess={() => onStageChange("assigning")}
+                        />
+                      )}
+                      {stage === "assigning" && (
+                        <WorkingStatus
+                          text="Assigning seats to the selected members..."
+                          ms={ASSIGNING_MS}
+                          onDone={finishAssigning}
+                        />
+                      )}
+                      {stage === "assigned" && (
+                        <p className="flex items-center gap-3 text-sm font-medium text-grey-500">
+                          <span className="flex size-[18px] items-center justify-center rounded-full bg-brand text-white">
+                            <Checkmark size={12} />
+                          </span>
+                          Assigned Runway seats to {assignedMembers.length}{" "}
+                          {assignedMembers.length === 1 ? "member" : "members"}
+                        </p>
+                      )}
+                    </div>
+                  </Turn>
+                )}
+
+                {reached(stage, "assigned") && (
+                  <Turn id={ANCHORS.assigned.id} title={ASSIGNED_TITLE} tabs={[...TABS, "Assets"]} last>
+                    <div className="flex flex-col gap-4 pt-6 text-base font-medium leading-normal text-grey-600">
+                      <p className="fx-fade-up">
+                        I’ve now given access to your team members, Amar. They will receive an email with access details
+                        shortly.
+                      </p>
+                      <div className="fx-fade-up" style={{ animationDelay: "150ms" }}>
+                        <LicenseLogCard
+                          count={assignedMembers.length}
+                          active={logOpen}
+                          onOpen={() => setLogOpen(true)}
+                        />
+                      </div>
+                      <p className="fx-fade-up" style={{ animationDelay: "300ms" }}>
+                        Here’s the log documenting the license assignment.
+                      </p>
+                      <p className="fx-fade-up" style={{ animationDelay: "450ms" }}>
+                        Is there anything else I can help with?
+                      </p>
+                    </div>
+                  </Turn>
+                )}
               </div>
             </div>
-
-            {stage === "questions" && (
-              <Questions answers={answers} setAnswers={setAnswers} onSubmit={() => onStageChange("thinking")} />
-            )}
-            {stage === "thinking" && <Thinking onDone={showResults} />}
-            {stage === "results" && <Results />}
           </div>
+
+          <footer className="flex shrink-0 justify-center border-t border-grey-300 bg-grey-50 p-6">
+            <div className="flex w-[641px] max-w-full items-center justify-between rounded-lg border border-grey-300 bg-white p-3">
+              <input
+                placeholder="Ask Fluxby AI"
+                className="min-w-0 flex-1 bg-transparent text-base font-medium text-grey-600 outline-none placeholder:text-grey-450"
+              />
+              <div className="flex items-center gap-2">
+                <span className="flex size-8 items-center justify-center text-grey-450">
+                  <Attachment size={16} />
+                </span>
+                {stage === "thinking" || stage === "assigning" ? (
+                  <button
+                    type="button"
+                    aria-label="Stop"
+                    onClick={() => onStageChange(stage === "thinking" ? "questions" : "assign")}
+                    className="rounded bg-grey-700 p-2 text-white"
+                  >
+                    <StopFilledAlt size={16} />
+                  </button>
+                ) : (
+                  <span className="rounded bg-grey-300 p-2 text-white">
+                    <ArrowRight size={16} />
+                  </span>
+                )}
+              </div>
+            </div>
+          </footer>
+        </div>
+
+        {logOpen && <LicenseLogPanel members={assignedMembers} onClose={() => setLogOpen(false)} />}
+      </div>
+    </div>
+  );
+}
+
+function Turn({
+  id,
+  title,
+  tabs,
+  last,
+  onBack,
+  children,
+}: {
+  id: string;
+  title: string;
+  tabs: string[];
+  last: boolean;
+  onBack?: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    // The latest turn fills the viewport so it can scroll flush to the top.
+    <section id={id} className={last ? "min-h-[calc(100vh-190px)]" : "pb-10"}>
+      <div className="sticky top-0 z-10 bg-grey-50 pt-8">
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="mb-6 flex items-center gap-1 text-sm font-medium text-grey-450 transition-colors hover:text-grey-700"
+          >
+            <ChevronLeft size={16} />
+            Back
+          </button>
+        )}
+        <h2 className="pb-4 text-2xl font-bold leading-[1.2] text-black">{title}</h2>
+        <div className="flex border-b border-grey-300">
+          {tabs.map((tab, i) => (
+            <span
+              key={tab}
+              className={`w-16 p-2 text-center text-xs leading-[1.4] ${
+                i === 0 ? "border-b-4 border-brand font-bold text-grey-600" : "font-medium text-grey-500"
+              }`}
+            >
+              {tab}
+            </span>
+          ))}
         </div>
       </div>
-
-      <footer className="flex shrink-0 justify-center border-t border-grey-300 bg-grey-50 px-6 py-6">
-        <div className="flex w-[641px] max-w-full items-center justify-between rounded-lg border border-grey-300 bg-white p-3">
-          <input
-            placeholder="Ask Fluxby AI"
-            className="flex-1 bg-transparent text-base font-medium text-grey-600 outline-none placeholder:text-grey-450"
-          />
-          <div className="flex items-center gap-2">
-            <span className="flex size-8 items-center justify-center text-grey-450">
-              <Attachment size={16} />
-            </span>
-            {stage === "thinking" ? (
-              <button
-                type="button"
-                aria-label="Stop"
-                onClick={() => onStageChange("questions")}
-                className="rounded bg-grey-700 p-2 text-white"
-              >
-                <StopFilledAlt size={16} />
-              </button>
-            ) : (
-              <span className="rounded bg-grey-300 p-2 text-white">
-                <ArrowRight size={16} />
-              </span>
-            )}
-          </div>
-        </div>
-      </footer>
-    </div>
+      {children}
+    </section>
   );
 }
 
@@ -137,7 +293,7 @@ function SectionRail({
       let current = 0;
       anchors.forEach((a, i) => {
         const target = document.getElementById(a.id);
-        if (target && i > 0 && target.getBoundingClientRect().top - el.getBoundingClientRect().top < 220) {
+        if (target && i > 0 && target.getBoundingClientRect().top - el.getBoundingClientRect().top < 260) {
           current = i;
         }
       });
@@ -153,8 +309,9 @@ function SectionRail({
       const el = scrollRef.current;
       const target = document.getElementById(anchors[i].id);
       if (!el || !target) return;
-      const top = i === 0 ? 0 : target.offsetTop - 150;
-      el.scrollTo({ top, behavior: "smooth" });
+      const offset = anchors[i].turn ? 0 : 200;
+      const top = el.scrollTop + target.getBoundingClientRect().top - el.getBoundingClientRect().top - offset;
+      el.scrollTo({ top: i === 0 ? 0 : top, behavior: "smooth" });
     },
     [anchors, scrollRef],
   );
@@ -331,7 +488,21 @@ function Thinking({ onDone }: { onDone: () => void }) {
   );
 }
 
-function ProductCard({ product }: { product: Product }) {
+function WorkingStatus({ text, ms, onDone }: { text: string; ms: number; onDone: () => void }) {
+  useEffect(() => {
+    const timer = setTimeout(onDone, ms);
+    return () => clearTimeout(timer);
+  }, [ms, onDone]);
+
+  return (
+    <div className="flex items-center gap-3">
+      <FluxbyMark size={18} className="animate-pulse" />
+      <p className="fx-fade-up fx-shimmer text-sm font-medium">{text}</p>
+    </div>
+  );
+}
+
+function ProductCard({ product, onGetAccess }: { product: Product; onGetAccess?: () => void }) {
   return (
     <article className="relative flex w-[267px] shrink-0 flex-col rounded-lg border border-grey-300 bg-white">
       {product.recommended && (
@@ -361,7 +532,14 @@ function ProductCard({ product }: { product: Product }) {
         Enterprise license <span>·</span> 5 seats left
       </p>
       <div className="p-4">
-        <span className="block rounded bg-brand px-4 py-2 text-center text-sm font-semibold text-white">Get access</span>
+        <button
+          type="button"
+          onClick={onGetAccess}
+          disabled={!onGetAccess}
+          className="block w-full rounded bg-brand px-4 py-2 text-center text-sm font-semibold text-white enabled:hover:opacity-90 disabled:cursor-default"
+        >
+          Get access
+        </button>
       </div>
     </article>
   );
@@ -410,7 +588,7 @@ function Carousel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Results() {
+function Results({ onGetAccess }: { onGetAccess?: () => void }) {
   const reveal = (i: number) => ({ animationDelay: `${i * 180}ms` });
 
   return (
@@ -426,7 +604,7 @@ function Results() {
         </h3>
         <Carousel>
           {PRODUCTS.map((p) => (
-            <ProductCard key={p.name} product={p} />
+            <ProductCard key={p.name} product={p} onGetAccess={p.recommended ? onGetAccess : undefined} />
           ))}
         </Carousel>
       </section>
@@ -466,15 +644,22 @@ function Results() {
       <section className="fx-fade-up flex flex-col gap-3" style={reveal(3)}>
         <p className="text-base font-medium leading-normal text-grey-600">How would you like to proceed?</p>
         <div className="flex flex-col gap-2">
-          {FOLLOW_UPS.map((f) => (
-            <span
-              key={f}
-              className="flex items-center justify-between rounded bg-grey-200 p-2 text-sm font-semibold text-grey-500"
-            >
-              {f}
-              <ArrowRight size={16} />
-            </span>
-          ))}
+          {FOLLOW_UPS.map((f, i) => {
+            // Only "Get access for Runway" leads anywhere; the other follow-ups are static for now.
+            const onClick = i === 0 ? onGetAccess : undefined;
+            return (
+              <button
+                key={f}
+                type="button"
+                onClick={onClick}
+                disabled={!onClick}
+                className="flex items-center justify-between rounded bg-grey-200 p-2 text-left text-sm font-semibold text-grey-500 enabled:hover:bg-grey-300 disabled:cursor-default"
+              >
+                {f}
+                <ArrowRight size={16} />
+              </button>
+            );
+          })}
         </div>
       </section>
     </div>
