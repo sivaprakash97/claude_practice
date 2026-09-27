@@ -125,3 +125,51 @@ export const REQUESTS: RequestRow[] = [
   { number: "SUR# 13", name: "Intercom", status: "Pending Approval", progress: 31, approver: { name: "Sophia Rodriguez", initials: "SR", bg: "#ffe4e8", fg: "#c01048" }, amount: "USD 11,600", date: "Mar 30, 2025", program: "Software" },
   { number: "SUR# 102", name: "Dropbox", status: "Draft", progress: 0, approver: { name: "James Lee", initials: "JL", bg: "#ebe9fe", fg: "#5925dc" }, amount: "USD 7,800", date: "Apr 18, 2025", program: "Software" },
 ];
+
+// ── Get access flow ─────────────────────────────────────────────
+
+export const ACCESS_TITLE = "Get access for Runway license";
+export const ASSIGNED_TITLE = "Runway seats successfully assigned";
+export const RUNWAY_SEATS = 5;
+export const ASSIGNING_MS = 3000;
+
+export type Member = {
+  id: string;
+  name: string;
+  email: string;
+  role?: string;
+  photo?: string;
+  initials: string;
+  bg?: string;
+  fg?: string;
+};
+
+export const RECOMMENDED_MEMBERS: Member[] = [
+  { id: "ashley", name: "Ashley Simmons", role: "Video editor", email: "ashley.simmons@acme.com", photo: "/procurement/member-ashley.png", initials: "AS" },
+  { id: "riley", name: "Riley White", role: "Video editor", email: "riley.white@acme.com", photo: "/procurement/member-riley.png", initials: "RW" },
+  { id: "mellisa", name: "Mellisa Berrera", role: "Video editor", email: "mellisa.berrera@acme.com", photo: "/procurement/member-mellisa.png", initials: "MB" },
+  { id: "nikita", name: "Nikita Skye", role: "Motion Graphics Designer", email: "nikita.skye@acme.com", photo: "/procurement/member-nikita.png", initials: "NS" },
+  { id: "liam", name: "Liam O'Reilly", role: "3D Animator", email: "liam0reilly@acme.com", photo: "/procurement/member-liam.png", initials: "LO" },
+];
+
+export const OTHER_MEMBERS: Member[] = [
+  { id: "aswin", name: "Aswin Kumar", email: "aswinkumar@acme.com", initials: "AK", bg: "#d1e9ff", fg: "#1849a9" },
+  { id: "maria", name: "Maria Johnson", email: "mariajohnson@acme.com", initials: "MJ", bg: "#fce7f6", fg: "#9e165f" },
+  { id: "david", name: "David Lee", email: "davidlee@acme.com", initials: "DL", bg: "#ffead5", fg: "#c4320a" },
+  { id: "sophia", name: "Sophia Patel", email: "sophiapatel@acme.com", initials: "SP", bg: "#ebe9fe", fg: "#5925dc" },
+];
+
+export const ALL_MEMBERS = [...RECOMMENDED_MEMBERS, ...OTHER_MEMBERS];
+
+export const LICENSE_LOG = {
+  number: "LA# 1029",
+  software: [
+    ["Software", "Runway"],
+    ["License type", "Enterprise"],
+    ["Renewal period", "Monthly"],
+    ["Next Renewal date", "Jul 15, 2025"],
+  ],
+  owner: { name: "Amar Joshi", photo: "/procurement/avatar-amar.png" },
+  department: "Marketing Design",
+  assignedDate: "June 24, 2025",
+} as const;
