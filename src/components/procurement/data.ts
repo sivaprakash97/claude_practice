@@ -131,7 +131,7 @@ export const REQUESTS: RequestRow[] = [
 export const ACCESS_TITLE = "Get access for Runway license";
 export const ASSIGNED_TITLE = "Runway seats successfully assigned";
 export const RUNWAY_SEATS = 5;
-export const ASSIGNING_MS = 3000;
+export const ASSIGNING_MS = 2000;
 
 export type Member = {
   id: string;

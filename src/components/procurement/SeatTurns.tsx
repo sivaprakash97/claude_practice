@@ -42,23 +42,23 @@ const DIGIT_LOOPS = 3;
 
 /**
  * Cash-counter style number: every digit spins through 0–9 before landing on its value,
- * the rightmost digits spinning longest, as if the total is being counted out.
+ * the rightmost digits spinning a little longer, like a cash counter settling.
  */
-function RollingNumber({ value, start, delay = 0 }: { value: number; start: boolean; delay?: number }) {
+function RollingNumber({ value, start }: { value: number; start: boolean }) {
   const digits = String(value).split("");
   return (
     <span className="inline-flex tabular-nums" aria-label={String(value)}>
       {digits.map((d, i) => {
         const target = (DIGIT_LOOPS - 1) * 10 + Number(d);
         const fromRight = digits.length - 1 - i;
-        const duration = 900 + fromRight * 250;
+        const duration = 450 + fromRight * 120;
         return (
           <span key={i} aria-hidden className="relative inline-block h-[1.2em] overflow-hidden leading-[1.2]">
             <span
               className="flex flex-col motion-reduce:!transition-none"
               style={{
                 transform: `translateY(-${start ? target * 1.2 : 0}em)`,
-                transition: `transform ${duration}ms cubic-bezier(0.16, 1, 0.3, 1) ${delay + i * 60}ms`,
+                transition: `transform ${duration}ms cubic-bezier(0.16, 1, 0.3, 1) ${i * 30}ms`,
               }}
             >
               {Array.from({ length: DIGIT_LOOPS * 10 }, (_, n) => (
@@ -193,14 +193,13 @@ function ImpactCard() {
         </span>
       </p>
       <p className="flex items-center justify-between text-base font-medium leading-normal">
-        Requested number of seats <RollingNumber value={EXTRA_SEATS} start={inView} delay={350} />
+        Requested number of seats <RollingNumber value={EXTRA_SEATS} start={inView} />
       </p>
       <hr className="border-dashed border-grey-300" />
       <p className="flex items-center justify-between text-base font-medium leading-normal">
         Total price
-        {/* The total is "counted out" once the inputs above have settled. */}
         <span className="text-xl font-bold leading-[1.2]">
-          $ <RollingNumber value={EXTRA_SEATS * SEAT_PRICE} start={inView} delay={1100} />
+          $ <RollingNumber value={EXTRA_SEATS * SEAT_PRICE} start={inView} />
         </span>
       </p>
     </div>
