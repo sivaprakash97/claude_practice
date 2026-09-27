@@ -88,7 +88,8 @@ function initialState(seed?: ResearchSeed): { stage: FirstStage; turns: ChatTurn
       return {
         stage: "results",
         turns: [done, assigned],
-        panel: seed === "log" ? { kind: "log", turnId: assigned.id } : null,
+        // The log opens alongside the success message by default.
+        panel: { kind: "log", turnId: assigned.id },
       };
     }
     case "more-seats":
@@ -205,14 +206,15 @@ export default function ResearchView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [panelOpen]);
 
-  const openPanel = useCallback(
-    (next: Panel) => {
-      setPanel(next);
-      // Mount at zero width first so the drawer can slide in.
-      if (!panelOpen) requestAnimationFrame(() => requestAnimationFrame(() => setPanelOpen(true)));
-    },
-    [panelOpen],
-  );
+  const panelOpenRef = useRef(panelOpen);
+  useEffect(() => {
+    panelOpenRef.current = panelOpen;
+  }, [panelOpen]);
+  const openPanel = useCallback((next: Panel) => {
+    setPanel(next);
+    // Mount at zero width first so the drawer can slide in.
+    if (!panelOpenRef.current) requestAnimationFrame(() => requestAnimationFrame(() => setPanelOpen(true)));
+  }, []);
 
   const update = useCallback(
     (id: string, patch: Partial<ChatTurn>) => setTurns((ts) => ts.map((t) => (t.id === id ? { ...t, ...patch } : t))),
@@ -224,15 +226,26 @@ export default function ResearchView({
     [],
   );
 
+  // Read by timers that finish working steps, so they see the latest turns.
+  const turnsRef = useRef(turns);
+  useEffect(() => {
+    turnsRef.current = turns;
+  }, [turns]);
+
   const finishAssigning = useCallback(
-    (id: string) =>
-      setTurns((ts) => {
-        const done = ts.map((t) => (t.id === id ? { ...t, phase: "done" as Phase } : t));
-        // Flow 2 follows the assignment with its own success turn.
-        if (done.find((t) => t.id === id)?.kind !== "access") return done;
-        return [...done, makeTurn("assigned", done.length, { title: ASSIGNED_TITLE, sourceId: id })];
-      }),
-    [],
+    (id: string) => {
+      const current = turnsRef.current;
+      const done = current.map((t) => (t.id === id ? { ...t, phase: "done" as Phase } : t));
+      // Flow 2 follows the assignment with its own success turn; flow 3 shows success in the same turn.
+      const successTurn =
+        done.find((t) => t.id === id)?.kind === "access"
+          ? makeTurn("assigned", done.length, { title: ASSIGNED_TITLE, sourceId: id })
+          : undefined;
+      setTurns(successTurn ? [...done, successTurn] : done);
+      // Open the license assignment log by default, once the success message has started to appear.
+      setTimeout(() => openPanel({ kind: "log", turnId: successTurn?.id ?? id }), 600);
+    },
+    [openPanel],
   );
 
   const finishCreating = useCallback(

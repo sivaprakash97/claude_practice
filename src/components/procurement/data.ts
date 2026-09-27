@@ -46,7 +46,7 @@ export const THINKING_STEPS = [
   "Checking if your team already uses the tool or has something similar...",
 ];
 
-export const THINKING_STEP_MS = 1750;
+export const THINKING_STEP_MS = 500;
 export const THINKING_SECONDS = Math.round((THINKING_STEPS.length * THINKING_STEP_MS) / 1000);
 
 export type Product = {

@@ -40,11 +40,11 @@ export default function Sidebar({
   return (
     <aside className="sticky top-0 flex h-screen w-[184px] shrink-0 flex-col bg-grey-700">
       <div className="flex h-[54px] items-center justify-between border-b border-white/20 p-4">
-        <div className="flex items-center gap-1.5">
+        <button type="button" onClick={onHome} aria-label="acme home" className="flex items-center gap-1.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/procurement/acme-logo.png" alt="" width={17} height={17} className="rounded-full" />
           <span className="text-[17px] font-light leading-[1.4] text-white">acme</span>
-        </div>
+        </button>
         <SidePanelCloseFilled size={14} className="text-white" />
       </div>
 

@@ -125,7 +125,11 @@ export default function HomeView({
                       setOpen(true);
                       setHighlight(0);
                     }}
-                    onFocus={() => setOpen(true)}
+                    onFocus={() => {
+                    // For the demo, clicking the empty box types the start of the designed question.
+                    if (!text) setText(BASE_PROMPT);
+                    setOpen(true);
+                  }}
                     onBlur={() => setOpen(false)}
                     onKeyDown={onKeyDown}
                     placeholder="Research any tool or service, and get a thorough report .."
