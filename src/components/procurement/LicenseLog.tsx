@@ -60,7 +60,7 @@ function DetailSection({ title, children }: { title: string; children: React.Rea
 
 export function LicenseLogPanel({ members, onClose }: { members: Member[]; onClose: () => void }) {
   return (
-    <aside className="fx-scrollbar flex min-w-0 flex-1 flex-col overflow-y-auto border-l border-grey-200 bg-grey-100">
+    <aside className="fx-scrollbar flex w-[calc(max(100vw,1100px)-650px)] shrink-0 flex-col overflow-y-auto border-l border-grey-200 bg-grey-100 shadow-[-16px_0_32px_-16px_rgba(0,26,15,0.16)]">
       <div className="sticky top-0 z-10 flex h-14 shrink-0 items-start justify-between bg-grey-100 px-6 py-4">
         <p className="text-base font-medium leading-normal text-grey-700">V1</p>
         <div className="flex items-center gap-8">
