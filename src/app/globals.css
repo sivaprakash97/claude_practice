@@ -10,6 +10,64 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Fluxby procurement prototype tokens (from the Figma file) */
+  --color-brand: #005c36;
+  --color-brand-tint: #ebf5ef;
+  --color-brand-tint-border: #ddeee6;
+  --color-grey-50: #fafafa;
+  --color-grey-100: #f4f5f5;
+  --color-grey-200: #eceeed;
+  --color-grey-300: #d5d8d6;
+  --color-grey-400: #a5aca8;
+  --color-grey-450: #717a76;
+  --color-grey-500: #47574f;
+  --color-grey-600: #1f2e26;
+  --color-grey-700: #001a0f;
+}
+
+@keyframes fx-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+@keyframes fx-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.fx-shimmer {
+  background-image: linear-gradient(
+    90deg,
+    var(--color-grey-450) 0%,
+    var(--color-grey-450) 40%,
+    var(--color-grey-300) 50%,
+    var(--color-grey-450) 60%,
+    var(--color-grey-450) 100%
+  );
+  background-size: 200% 100%;
+  background-clip: text;
+  color: transparent;
+  animation: fx-shimmer 1.6s linear infinite;
+}
+
+.fx-fade-up {
+  animation: fx-fade-up 400ms ease-out both;
+}
+
+.fx-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--color-grey-400) 50%, transparent) transparent;
 }
 
 @media (prefers-color-scheme: dark) {
