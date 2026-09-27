@@ -46,6 +46,10 @@ const ANCHORS = {
 
 const TABS = ["Chat", "Steps", "Sources"];
 
+// Shared motion for the log drawer: the chat column narrows while the panel slides in.
+const DRAWER_MS = 500;
+const DRAWER_MOTION = "duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:transition-none";
+
 export default function ResearchView({
   stage,
   onStageChange,
@@ -62,6 +66,8 @@ export default function ResearchView({
   const [answers, setAnswers] = useState<Answers>(emptyAnswers);
   const [selected, setSelected] = useState<string[]>(initialSelected);
   const [logOpen, setLogOpen] = useState(initialLogOpen);
+  // The panel stays mounted while it slides out, and mounts closed so it can slide in.
+  const [logMounted, setLogMounted] = useState(initialLogOpen);
   const scrollRef = useRef<HTMLDivElement>(null);
   const showResults = useCallback(() => onStageChange("results"), [onStageChange]);
   const finishAssigning = useCallback(() => onStageChange("assigned"), [onStageChange]);
@@ -80,13 +86,27 @@ export default function ResearchView({
     el.scrollTo({ top, behavior: "smooth" });
   }, [stage]);
 
-  // Opening or closing the log reflows the chat column, so keep the success turn in view.
+  // The chat column reflows while the drawer animates, so hold the success turn in view throughout.
   useEffect(() => {
     const el = scrollRef.current;
     const target = document.getElementById(ANCHORS.assigned.id);
     if (!el || !target) return;
-    el.scrollTo({ top: el.scrollTop + target.getBoundingClientRect().top - el.getBoundingClientRect().top });
+    const end = performance.now() + DRAWER_MS + 50;
+    let frame = 0;
+    const hold = () => {
+      el.scrollTop += target.getBoundingClientRect().top - el.getBoundingClientRect().top;
+      if (performance.now() < end) frame = requestAnimationFrame(hold);
+    };
+    hold();
+    return () => cancelAnimationFrame(frame);
   }, [logOpen]);
+
+  const openLog = () => {
+    if (logOpen) return;
+    setLogMounted(true);
+    // Let the panel mount at zero width before starting the slide.
+    requestAnimationFrame(() => requestAnimationFrame(() => setLogOpen(true)));
+  };
 
   const anchors = useMemo(() => {
     const list: Anchor[] = [ANCHORS.prompt];
@@ -97,7 +117,6 @@ export default function ResearchView({
   }, [stage]);
 
   const assignedMembers = ALL_MEMBERS.filter((m) => selected.includes(m.id));
-  const content = logOpen ? "w-full pl-14 pr-12" : "mx-auto w-[580px] max-w-[calc(100%-96px)]";
 
   return (
     <div className="flex h-screen min-w-0 flex-1 flex-col">
@@ -110,86 +129,100 @@ export default function ResearchView({
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <div className={`flex min-w-0 flex-col ${logOpen ? "w-[466px] shrink-0" : "flex-1"}`}>
+        <div
+          className={`flex min-w-0 shrink-0 flex-col transition-[width] ${DRAWER_MOTION}`}
+          style={{ width: logOpen ? 466 : "100%" }}
+          onTransitionEnd={(e) => {
+            if (e.target === e.currentTarget && !logOpen) setLogMounted(false);
+          }}
+        >
           <div className="relative min-h-0 flex-1">
             <SectionRail anchors={anchors} scrollRef={scrollRef} />
 
             <div ref={scrollRef} className="fx-scrollbar h-full overflow-y-auto">
-              <div className={`${content} pb-16`}>
-                <Turn
-                  id={ANCHORS.prompt.id}
-                  title={FLOW_PROMPT}
-                  tabs={reached(stage, "results") ? TABS : []}
-                  last={!reached(stage, "assign")}
-                  onBack={onBack}
+              <div
+                className={`pb-16 transition-[padding] ${DRAWER_MOTION} ${logOpen ? "pl-14 pr-12" : "px-12"}`}
+              >
+                <div
+                  className={`mx-auto transition-[max-width] ${DRAWER_MOTION} ${
+                    logOpen ? "max-w-[362px]" : "max-w-[580px]"
+                  }`}
                 >
-                  {stage === "questions" && (
-                    <Questions answers={answers} setAnswers={setAnswers} onSubmit={() => onStageChange("thinking")} />
-                  )}
-                  {stage === "thinking" && <Thinking onDone={showResults} />}
-                  {reached(stage, "results") && (
-                    <Results onGetAccess={stage === "results" ? () => onStageChange("assign") : undefined} />
-                  )}
-                </Turn>
-
-                {reached(stage, "assign") && (
-                  <Turn id={ANCHORS.access.id} title={ACCESS_TITLE} tabs={TABS} last={!reached(stage, "assigned")}>
-                    <div className="flex flex-col gap-4 pt-6">
-                      {stage === "assign" && (
-                        <p className="fx-fade-up text-base font-medium leading-normal text-grey-600">
-                          Sure thing, let’s help you assign Runway seats to your team members.
-                        </p>
-                      )}
-                      {stage === "assign" && (
-                        <AssignSeats
-                          selected={selected}
-                          onChange={setSelected}
-                          onGiveAccess={() => onStageChange("assigning")}
-                        />
-                      )}
-                      {stage === "assigning" && (
-                        <WorkingStatus
-                          text="Assigning seats to the selected members..."
-                          ms={ASSIGNING_MS}
-                          onDone={finishAssigning}
-                        />
-                      )}
-                      {stage === "assigned" && (
-                        <p className="flex items-center gap-3 text-sm font-medium text-grey-500">
-                          <span className="flex size-[18px] items-center justify-center rounded-full bg-brand text-white">
-                            <Checkmark size={12} />
-                          </span>
-                          Assigned Runway seats to {assignedMembers.length}{" "}
-                          {assignedMembers.length === 1 ? "member" : "members"}
-                        </p>
-                      )}
-                    </div>
+                  <Turn
+                    id={ANCHORS.prompt.id}
+                    title={FLOW_PROMPT}
+                    tabs={reached(stage, "results") ? TABS : []}
+                    last={!reached(stage, "assign")}
+                    onBack={onBack}
+                  >
+                    {stage === "questions" && (
+                      <Questions answers={answers} setAnswers={setAnswers} onSubmit={() => onStageChange("thinking")} />
+                    )}
+                    {stage === "thinking" && <Thinking onDone={showResults} />}
+                    {reached(stage, "results") && (
+                      <Results onGetAccess={stage === "results" ? () => onStageChange("assign") : undefined} />
+                    )}
                   </Turn>
-                )}
 
-                {reached(stage, "assigned") && (
-                  <Turn id={ANCHORS.assigned.id} title={ASSIGNED_TITLE} tabs={[...TABS, "Assets"]} last>
-                    <div className="flex flex-col gap-4 pt-6 text-base font-medium leading-normal text-grey-600">
-                      <p className="fx-fade-up">
-                        I’ve now given access to your team members, Amar. They will receive an email with access details
-                        shortly.
-                      </p>
-                      <div className="fx-fade-up" style={{ animationDelay: "150ms" }}>
-                        <LicenseLogCard
-                          count={assignedMembers.length}
-                          active={logOpen}
-                          onOpen={() => setLogOpen(true)}
-                        />
+                  {reached(stage, "assign") && (
+                    <Turn id={ANCHORS.access.id} title={ACCESS_TITLE} tabs={TABS} last={!reached(stage, "assigned")}>
+                      <div className="flex flex-col gap-4 pt-6">
+                        {stage === "assign" && (
+                          <p className="fx-fade-up text-base font-medium leading-normal text-grey-600">
+                            Sure thing, let’s help you assign Runway seats to your team members.
+                          </p>
+                        )}
+                        {stage === "assign" && (
+                          <AssignSeats
+                            selected={selected}
+                            onChange={setSelected}
+                            onGiveAccess={() => onStageChange("assigning")}
+                          />
+                        )}
+                        {stage === "assigning" && (
+                          <WorkingStatus
+                            text="Assigning seats to the selected members..."
+                            ms={ASSIGNING_MS}
+                            onDone={finishAssigning}
+                          />
+                        )}
+                        {stage === "assigned" && (
+                          <p className="flex items-center gap-3 text-sm font-medium text-grey-500">
+                            <span className="flex size-[18px] items-center justify-center rounded-full bg-brand text-white">
+                              <Checkmark size={12} />
+                            </span>
+                            Assigned Runway seats to {assignedMembers.length}{" "}
+                            {assignedMembers.length === 1 ? "member" : "members"}
+                          </p>
+                        )}
                       </div>
-                      <p className="fx-fade-up" style={{ animationDelay: "300ms" }}>
-                        Here’s the log documenting the license assignment.
-                      </p>
-                      <p className="fx-fade-up" style={{ animationDelay: "450ms" }}>
-                        Is there anything else I can help with?
-                      </p>
-                    </div>
-                  </Turn>
-                )}
+                    </Turn>
+                  )}
+
+                  {reached(stage, "assigned") && (
+                    <Turn id={ANCHORS.assigned.id} title={ASSIGNED_TITLE} tabs={[...TABS, "Assets"]} last>
+                      <div className="flex flex-col gap-4 pt-6 text-base font-medium leading-normal text-grey-600">
+                        <p className="fx-fade-up">
+                          I’ve now given access to your team members, Amar. They will receive an email with access details
+                          shortly.
+                        </p>
+                        <div className="fx-fade-up" style={{ animationDelay: "150ms" }}>
+                          <LicenseLogCard
+                            count={assignedMembers.length}
+                            active={logOpen}
+                            onOpen={openLog}
+                          />
+                        </div>
+                        <p className="fx-fade-up" style={{ animationDelay: "300ms" }}>
+                          Here’s the log documenting the license assignment.
+                        </p>
+                        <p className="fx-fade-up" style={{ animationDelay: "450ms" }}>
+                          Is there anything else I can help with?
+                        </p>
+                      </div>
+                    </Turn>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -223,7 +256,13 @@ export default function ResearchView({
           </footer>
         </div>
 
-        {logOpen && <LicenseLogPanel members={assignedMembers} onClose={() => setLogOpen(false)} />}
+        {logMounted && (
+          // The panel keeps its final width and is revealed from the right as the chat column narrows,
+          // so it slides in rather than squeezing.
+          <div className="flex min-w-0 flex-1 justify-end overflow-hidden">
+            <LicenseLogPanel members={assignedMembers} onClose={() => setLogOpen(false)} />
+          </div>
+        )}
       </div>
     </div>
   );
