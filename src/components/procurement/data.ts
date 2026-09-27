@@ -188,7 +188,7 @@ export const PROCEED_OPTIONS = [
 export const AFTER_ASSIGN_OPTIONS = ["Yes, proceed with the request for 5 extra seats", "I’ll do it later"];
 
 export const UPGRADE_TITLE = "Yes, proceed with the request for 5 extra Runway seats";
-export const CREATING_MS = 3000;
+export const CREATING_MS = 2000;
 export const EXTRA_SEATS = 5;
 export const SEAT_PRICE = 150;
 
