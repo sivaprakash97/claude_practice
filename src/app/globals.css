@@ -1,16 +1,6 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-
   /* Fluxby procurement prototype tokens (from the Figma file) */
   --color-brand: #005c36;
   --color-brand-tint: #ebf5ef;
@@ -70,15 +60,3 @@
   scrollbar-color: color-mix(in srgb, var(--color-grey-400) 50%, transparent) transparent;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
