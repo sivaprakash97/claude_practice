@@ -3,6 +3,7 @@ import manropeUrl from "@fontsource-variable/manrope/files/manrope-latin-wght-no
 import { useMemo } from "react";
 import {
   AbsoluteFill,
+  Img,
   OffthreadVideo,
   interpolate,
   staticFile,
@@ -23,8 +24,8 @@ const RADIUS = 14;
 const URL = "claude-practice-one.vercel.app";
 const CAPTION_SPACE = 130; // Height the caption takes up at the bottom of the frame.
 
-// Clean and neutral.
-const BG = "#f2f2f3";
+// Green marbled backdrop (public/background.jpg); the window and captions stay clean and neutral.
+const BACKGROUND = "background.jpg";
 const INK = "#1d1d20";
 
 export function Walkthrough({ timeline }: { timeline: Timeline }) {
@@ -76,7 +77,8 @@ export function Walkthrough({ timeline }: { timeline: Timeline }) {
   const counter = Math.pow(cam.scale, -0.45);
 
   return (
-    <AbsoluteFill style={{ background: `radial-gradient(120% 90% at 50% 35%, #fafafa 0%, ${BG} 60%, #e9e9eb 100%)` }}>
+    <AbsoluteFill style={{ background: "#0f9b6c" }}>
+      <Backdrop progress={frame / Math.max(1, timeline.durationInFrames - 1)} />
       <AbsoluteFill
         style={{
           transformOrigin: "0 0",
@@ -121,6 +123,23 @@ export function Walkthrough({ timeline }: { timeline: Timeline }) {
 
       <Captions timeline={timeline} t={t} />
     </AbsoluteFill>
+  );
+}
+
+/** The backdrop drifts slowly across the clip so the frame never sits completely still. */
+function Backdrop({ progress }: { progress: number }) {
+  return (
+    <Img
+      src={staticFile(BACKGROUND)}
+      style={{
+        position: "absolute",
+        inset: 0,
+        width: "100%",
+        height: "100%",
+        objectFit: "cover",
+        transform: `scale(${1.04 + 0.04 * progress}) translate(${-8 * progress}px, ${-6 * progress}px)`,
+      }}
+    />
   );
 }
 

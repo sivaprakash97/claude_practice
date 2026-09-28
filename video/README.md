@@ -48,6 +48,6 @@ download its own browser.
   follows twice as fast until the next `speed(1)`. A flow's `crop` sets how much of the page's
   left edge stays out of frame, and `ready` lets it start filming as soon as some content
   appears. Then run capture, build and render again.
-- **Look**: `src/Walkthrough.tsx` holds the window frame, background, cursor, ripple and caption
+- **Look**: `public/background.jpg` is the backdrop. `src/Walkthrough.tsx` holds the window frame, cursor, ripple and caption
   styles. `src/timeline.ts` holds the camera timing (glide duration, when to pan instead of
   zooming out).
