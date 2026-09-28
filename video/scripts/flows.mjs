@@ -78,11 +78,11 @@ const moreSeats = {
   async script({ page, click, focus, scrollTo, wait, caption, speed }) {
     caption("Fluxby lays out the approval process");
     const process = page.getByText("Process (~3 weeks)").locator("..");
-    await focus(process, { zoom: 1.45, hold: 3.6, at: [0.5, 0.32] });
-    await wait(1600);
+    await focus(process, { zoom: 1.45, hold: 2.1, at: [0.5, 0.32] });
+    await wait(1100);
     // Glide down the steps while the camera holds on the card.
-    await scrollTo(process, { block: "end", offset: 60, ms: 1900 });
-    await wait(600);
+    await scrollTo(process, { block: "end", offset: 60, ms: 1200 });
+    await wait(300);
 
     speed(2.5);
     await scrollTo(page.getByRole("heading", { name: "How would you like to proceed?" }), {
@@ -100,7 +100,7 @@ const moreSeats = {
     });
 
     // Picking teammates plays a little calmer so each check reads.
-    speed(1.45);
+    speed(1.25);
     await wait(800);
     await click(page.getByPlaceholder("Search for team members"), { zoom: 1.7, hold: 0.3, travel: 450 });
     await wait(200);
@@ -108,15 +108,17 @@ const moreSeats = {
     for (const name of ["Ashley Simmons", "Riley White", "Mellisa Berrera", "Nikita Skye", "Liam O"])
       await click(member(name), { zoom: 1.7, hold: 0.2, travel: 350, pause: 120 });
     await click(page.getByRole("button", { name: /Give access/ }), { zoom: 1.7, hold: 0.2, travel: 400, out: true });
-    speed(3);
     // Assigning takes 2s, then the log panel slides open.
+    speed(2.2);
     await wait(3400);
     speed(1);
 
     caption("Raise a seat upgrade request");
     await click(page.getByRole("button", { name: /Yes, proceed/ }), { zoom: 1.7, hold: 0.3, travel: 500, out: true });
-    speed(3);
+    // Creating the request, then the document slides in.
+    speed(2.2);
     await wait(2700);
+    speed(3);
     await scrollTo(page.getByRole("button", { name: "Submit request" }), { block: "end", offset: 30, ms: 1500 });
     speed(1);
     await click(page.getByRole("button", { name: "Submit request" }), { zoom: 1.8, hold: 0.3, travel: 450, out: true });
