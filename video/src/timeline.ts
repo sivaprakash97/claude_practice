@@ -36,8 +36,8 @@ export const easeInOut = (k: number) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(
 const clamp01 = (k: number) => Math.min(1, Math.max(0, k));
 
 // Camera timing.
-const ZOOM_IN = 0.9; // Seconds to glide in to a target.
-const ZOOM_OUT = 0.9; // Seconds to pull back out to the full window.
+const ZOOM_IN = 0.75; // Seconds to glide in to a target.
+const ZOOM_OUT = 0.75; // Seconds to pull back out to the full window.
 const STAY_GAP = 1.4; // Targets closer together than this pan across instead of zooming out between them.
 const FOCUS_ARRIVE = 0.8; // A focus point without a click is reached this long after it's logged.
 

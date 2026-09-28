@@ -1,9 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, Search } from "@carbon/icons-react";
+import { Checkmark, ChevronDown, Search } from "@carbon/icons-react";
 import { OTHER_MEMBERS, RECOMMENDED_MEMBERS, RUNWAY_SEATS, type Member } from "./data";
 import MemberAvatar from "./MemberAvatar";
+
+// Picked rows get a firmer green than the page tint, plus a check, so the choice reads at a glance.
+const SELECTED_ROW = "border-brand-tint-border bg-[#dcefe5]";
+
+function SelectedCheck({ on }: { on: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={`flex size-5 shrink-0 items-center justify-center rounded-full bg-brand text-white transition-[opacity,transform] duration-150 ${
+        on ? "scale-100 opacity-100" : "scale-50 opacity-0"
+      }`}
+    >
+      <Checkmark size={14} />
+    </span>
+  );
+}
 
 const matches = (m: Member, q: string) =>
   [m.name, m.role ?? "", m.email].some((field) => field.toLowerCase().includes(q));
@@ -89,17 +105,18 @@ export default function AssignSeats({
                         aria-pressed={isSelected}
                         disabled={disabled}
                         onClick={() => toggle(m.id)}
-                        className={`flex items-center gap-2 rounded border-b border-grey-200 p-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-                          isSelected ? "bg-brand-tint" : "enabled:hover:bg-grey-100"
+                        className={`flex items-center gap-2 rounded border-b p-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                          isSelected ? SELECTED_ROW : "border-grey-200 enabled:hover:bg-grey-100"
                         }`}
                       >
                         <MemberAvatar member={m} />
-                        <span className="flex flex-col font-medium">
+                        <span className="flex flex-1 flex-col font-medium">
                           <span className="text-sm leading-normal text-grey-700">{m.name}</span>
                           <span className={`text-xs leading-[1.4] ${isSelected ? "text-[#658676]" : "text-grey-450"}`}>
                             {m.role}
                           </span>
                         </span>
+                        <SelectedCheck on={isSelected} />
                       </button>
                     );
                   })}
@@ -125,11 +142,12 @@ export default function AssignSeats({
                         disabled={disabled}
                         onClick={() => toggle(m.id)}
                         className={`flex items-center gap-1 rounded p-2 text-left text-base font-medium leading-normal transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
-                          isSelected ? "bg-brand-tint" : "enabled:hover:bg-grey-100"
+                          isSelected ? SELECTED_ROW : "enabled:hover:bg-grey-100"
                         }`}
                       >
                         <span className="text-grey-700">{m.name}</span>
-                        <span className="truncate text-grey-450">{m.email}</span>
+                        <span className="flex-1 truncate text-grey-450">{m.email}</span>
+                        <SelectedCheck on={isSelected} />
                       </button>
                     );
                   })}

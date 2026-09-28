@@ -135,11 +135,12 @@ export async function record({ name, url, script, outDir }) {
     const to = { x: b.x + b.width * at[0], y: b.y + b.height * at[1] };
     const from = mouse;
     const moveStart = now();
-    const steps = 14;
+    // Paced against the clock so each move takes `travel` ms however slow a mouse event is.
+    const steps = Math.max(6, Math.round(travel / 40));
     for (let i = 1; i <= steps; i++) {
       const p = arc(from, to, ease(i / steps));
       await page.mouse.move(p.x, p.y);
-      await sleep(travel / steps);
+      await sleep(moveStart * 1000 + (travel * i) / steps - Date.now());
     }
     const moveEnd = now();
     await sleep(pause);
