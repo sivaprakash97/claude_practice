@@ -109,12 +109,17 @@ export async function record({ name, url, script, outDir }) {
     );
   };
 
-  /** Scroll the target into view if it isn't comfortably visible already. */
+  /** Scroll the target into view if it isn't comfortably visible, or something is covering it. */
   const reveal = async (target) => {
     const b = await box(target);
     const margin = 90;
     const visibleBottom = VIEWPORT.height - 110; // Above the chat box.
-    if (b.y < margin || b.y + b.height > visibleBottom) await scrollTo(target);
+    const covered = await target.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return !hit || !(el === hit || el.contains(hit) || hit.contains(el));
+    });
+    if (covered || b.y < margin || b.y + b.height > visibleBottom) await scrollTo(target, { ms: 500 });
   };
 
   /**
