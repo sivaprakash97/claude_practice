@@ -1,0 +1,6 @@
+node_modules/
+# Raw captures and renders are large; regenerate them with the scripts.
+recordings/
+public/*/screen.mp4
+out/
+scratch/
