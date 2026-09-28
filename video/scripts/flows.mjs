@@ -78,8 +78,8 @@ const moreSeats = {
   async script({ page, click, focus, scrollTo, wait, caption, speed }) {
     caption("Fluxby lays out the approval process");
     const process = page.getByText("Process (~3 weeks)").locator("..");
-    await focus(process, { zoom: 1.45, hold: 4.6, at: [0.5, 0.32] });
-    await wait(2600);
+    await focus(process, { zoom: 1.45, hold: 3.6, at: [0.5, 0.32] });
+    await wait(1600);
     // Glide down the steps while the camera holds on the card.
     await scrollTo(process, { block: "end", offset: 60, ms: 1900 });
     await wait(600);
@@ -99,7 +99,8 @@ const moreSeats = {
       out: true,
     });
 
-    speed(2.2);
+    // Picking teammates plays a little calmer so each check reads.
+    speed(1.45);
     await wait(800);
     await click(page.getByPlaceholder("Search for team members"), { zoom: 1.7, hold: 0.3, travel: 450 });
     await wait(200);

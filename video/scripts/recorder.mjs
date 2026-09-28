@@ -8,7 +8,7 @@ import { chromium } from "playwright-core";
 
 // The original 1440-wide design. The video crops the nav sidebar off the left (see `crop`).
 export const VIEWPORT = { width: 1440, height: 1024 };
-const SCALE = 2; // Device pixel ratio: frames are 2880×2048 so zooms stay sharp.
+const SCALE = 1.5; // Device pixel ratio: 2160×1536 frames, sharp up to the 1.9× zooms the flows use.
 const CHROME = process.env.CHROME_PATH ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
 
 const now = () => Date.now() / 1000;
@@ -66,7 +66,7 @@ export async function record({ name, url, script, outDir, crop = { x: 184 }, rea
   });
   await cdp.send("Page.startScreencast", {
     format: "jpeg",
-    quality: 92,
+    quality: 88,
     maxWidth: VIEWPORT.width * SCALE,
     maxHeight: VIEWPORT.height * SCALE,
     everyNthFrame: 1,

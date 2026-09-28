@@ -12,7 +12,7 @@ on each click, and the videos add a smooth cursor, click ripples and captions.
 ## How it works
 
 1. **Capture** (`scripts/capture.mjs`): Playwright runs each flow in `scripts/flows.mjs` against the
-   running prototype at the design's 1440×1024. It records the screen at 2× through the DevTools
+   running prototype at the design's 1440×1024. It records the screen at 1.5× through the DevTools
    screencast and logs every click, scroll, caption and speed change on the same clock.
 2. **Build** (`scripts/build.mjs`): applies the speed-ups and writes the screen as a steady 60fps
    clip (`public/<flow>/screen.mp4`) plus a timeline of events (`src/timelines/<flow>.json`).
