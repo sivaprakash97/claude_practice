@@ -10,5 +10,5 @@ const names = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys
 for (const name of names) {
   const flow = FLOWS[name];
   if (!flow) throw new Error(`Unknown flow "${name}". Flows: ${Object.keys(FLOWS).join(", ")}`);
-  await record({ name, url: base + flow.path, script: flow.script, outDir: join("recordings", name) });
+  await record({ name, url: base + flow.path, ...flow, outDir: join("recordings", name) });
 }

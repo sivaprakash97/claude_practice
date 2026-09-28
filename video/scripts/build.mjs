@@ -87,6 +87,7 @@ for (const name of names) {
         fps: FPS,
         durationInFrames: total,
         viewport: rec.viewport,
+        crop: rec.crop ?? { x: 0 },
         cursor: rec.events.find((e) => e.kind === "start").cursor,
         events,
       },

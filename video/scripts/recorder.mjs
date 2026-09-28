@@ -6,8 +6,9 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { chromium } from "playwright-core";
 
-export const VIEWPORT = { width: 1200, height: 1000 };
-const SCALE = 2; // Device pixel ratio: frames are 2400×2000 so zooms stay sharp.
+// The original 1440-wide design. The video crops the nav sidebar off the left (see `crop`).
+export const VIEWPORT = { width: 1440, height: 1024 };
+const SCALE = 2; // Device pixel ratio: frames are 2880×2048 so zooms stay sharp.
 const CHROME = process.env.CHROME_PATH ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
 
 const now = () => Date.now() / 1000;
@@ -21,7 +22,12 @@ const arc = (a, b, k) => {
 };
 const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
 
-export async function record({ name, url, script, outDir }) {
+/**
+ * crop: how much of the page's left edge the video leaves out (the nav sidebar by default).
+ * ready: waits until the page is ready to film; the video starts the moment it returns, so a
+ * flow can start as soon as content appears and catch its entrance animations.
+ */
+export async function record({ name, url, script, outDir, crop = { x: 184 }, ready }) {
   const frameDir = join(outDir, "frames");
   await rm(outDir, { recursive: true, force: true });
   await mkdir(frameDir, { recursive: true });
@@ -29,11 +35,26 @@ export async function record({ name, url, script, outDir }) {
   const browser = await chromium.launch({ executablePath: CHROME, args: [`--force-device-scale-factor=${SCALE}`] });
   const context = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor: SCALE });
   const page = await context.newPage();
-  await page.goto(url, { waitUntil: "networkidle" });
-  // No text caret or focus rings: the video draws its own cursor.
-  await page.addStyleTag({ content: "*{caret-color:transparent!important}" });
-  await page.waitForTimeout(600);
+  await page.addInitScript(() => {
+    document.addEventListener("DOMContentLoaded", () => {
+      // No text caret: the video draws its own cursor.
+      const style = document.createElement("style");
+      style.textContent = "*{caret-color:transparent!important}";
+      document.head.appendChild(style);
+      // Screencast only sends frames when something changes: a hidden ticking element keeps
+      // frames coming during still moments, so there is always a frame at the start.
+      const tick = document.createElement("div");
+      tick.style.cssText = "position:fixed;left:0;top:0;width:1px;height:1px;opacity:0.01;pointer-events:none";
+      document.body.appendChild(tick);
+      const loop = (t) => {
+        tick.style.background = Math.floor(t / 16) % 2 ? "#fff" : "#fefefe";
+        requestAnimationFrame(loop);
+      };
+      requestAnimationFrame(loop);
+    });
+  });
 
+  // Recording starts before the page loads; frames before the "start" event are dropped.
   const frames = [];
   const writes = [];
   const cdp = await context.newCDPSession(page);
@@ -53,22 +74,16 @@ export async function record({ name, url, script, outDir }) {
 
   const events = [];
   const log = (kind, fields = {}) => events.push({ kind, t: now(), ...fields });
-  let mouse = { x: VIEWPORT.width * 0.62, y: VIEWPORT.height * 0.78 };
+  let mouse = { x: crop.x + (VIEWPORT.width - crop.x) * 0.6, y: VIEWPORT.height * 0.78 };
   await page.mouse.move(mouse.x, mouse.y);
 
-  // Screencast only sends frames when something changes: a hidden ticking element keeps
-  // frames coming during still moments, so the first frame is exactly at the start.
-  await page.evaluate(() => {
-    const tick = document.createElement("div");
-    tick.style.cssText = "position:fixed;left:0;top:0;width:1px;height:1px;opacity:0.01;pointer-events:none";
-    document.body.appendChild(tick);
-    const loop = (t) => {
-      tick.style.background = Math.floor(t / 16) % 2 ? "#fff" : "#fefefe";
-      requestAnimationFrame(loop);
-    };
-    requestAnimationFrame(loop);
-  });
-  await sleep(300);
+  if (ready) {
+    await page.goto(url, { waitUntil: "commit" });
+    await ready(page);
+  } else {
+    await page.goto(url, { waitUntil: "networkidle" });
+    await page.waitForTimeout(900);
+  }
   log("start", { cursor: mouse });
 
   const box = async (target) => {
@@ -142,8 +157,17 @@ export async function record({ name, url, script, outDir }) {
       await page.mouse.move(p.x, p.y);
       await sleep(moveStart * 1000 + (travel * i) / steps - Date.now());
     }
-    const moveEnd = now();
+    let moveEnd = now();
     await sleep(pause);
+    // If the layout shifted during the move (a panel sliding open), follow the target.
+    const b2 = await box(target);
+    const now2 = { x: b2.x + b2.width * at[0], y: b2.y + b2.height * at[1] };
+    if (Math.hypot(now2.x - to.x, now2.y - to.y) > 3) {
+      await page.mouse.move(now2.x, now2.y, { steps: 4 });
+      Object.assign(to, now2);
+      moveEnd = now();
+      await sleep(120);
+    }
     mouse = to;
     log("click", { x: to.x, y: to.y, from, moveStart, moveEnd, zoom, hold, out });
     await page.mouse.down();
@@ -168,7 +192,14 @@ export async function record({ name, url, script, outDir }) {
     speed: (rate) => log("speed", { rate }),
   };
 
-  await script(api);
+  try {
+    await script(api);
+  } catch (error) {
+    // Keep a picture of where it got stuck.
+    await page.screenshot({ path: join(outDir, "error.png") }).catch(() => {});
+    await browser.close();
+    throw error;
+  }
   log("end");
   await sleep(200);
   await cdp.send("Page.stopScreencast");
@@ -177,7 +208,7 @@ export async function record({ name, url, script, outDir }) {
 
   await writeFile(
     join(outDir, "recording.json"),
-    JSON.stringify({ name, viewport: VIEWPORT, scale: SCALE, frames, events }, null, 1),
+    JSON.stringify({ name, viewport: VIEWPORT, crop, scale: SCALE, frames, events }, null, 1),
   );
   console.log(`${name}: ${frames.length} frames, ${(events.at(-1).t - events[0].t).toFixed(1)}s`);
 }

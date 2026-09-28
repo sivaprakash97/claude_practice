@@ -32,7 +32,10 @@ export function Walkthrough({ timeline }: { timeline: Timeline }) {
   const { fps } = useVideoConfig();
   const t = frame / fps;
 
-  const k = WINDOW_WIDTH / timeline.viewport.width;
+  // The window shows the page from `crop.x` to its right edge, so the layout keeps its full
+  // design width while the unimportant left edge (the nav sidebar) stays out of frame.
+  const cropX = timeline.crop.x;
+  const k = WINDOW_WIDTH / (timeline.viewport.width - cropX);
   const screenHeight = timeline.viewport.height * k;
   const win = {
     left: (SIZE - WINDOW_WIDTH) / 2,
@@ -40,7 +43,7 @@ export function Walkthrough({ timeline }: { timeline: Timeline }) {
     width: WINDOW_WIDTH,
     height: BAR + screenHeight,
   };
-  const toCanvas = (p: Point): Point => ({ x: win.left + p.x * k, y: win.top + BAR + p.y * k });
+  const toCanvas = (p: Point): Point => ({ x: win.left + (p.x - cropX) * k, y: win.top + BAR + p.y * k });
 
   const { keys, clicks } = useMemo(() => {
     const wide: Camera = { scale: 1, x: SIZE / 2, y: SIZE / 2 };
@@ -99,7 +102,14 @@ export function Walkthrough({ timeline }: { timeline: Timeline }) {
           <OffthreadVideo
             src={staticFile(`${timeline.name}/screen.mp4`)}
             muted
-            style={{ position: "absolute", left: 0, top: BAR, width: win.width, height: screenHeight }}
+            style={{
+              position: "absolute",
+              left: -cropX * k,
+              top: BAR,
+              width: timeline.viewport.width * k,
+              height: screenHeight,
+              maxWidth: "none",
+            }}
           />
         </div>
 

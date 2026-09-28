@@ -26,6 +26,8 @@ export type Timeline = {
   fps: number;
   durationInFrames: number;
   viewport: { width: number; height: number };
+  /** Page pixels cut off the left edge of the window. */
+  crop: { x: number };
   cursor: Point;
   events: TimelineEvent[];
 };

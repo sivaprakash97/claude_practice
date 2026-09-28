@@ -7,17 +7,18 @@ on each click, and the videos add a smooth cursor, click ripples and captions.
 | --- | --- | --- |
 | 1 | `research` | Ask Fluxby for a tool, answer its questions, get Runway recommended |
 | 2 | `access` | Get access to Runway and pick the teammates who need a seat |
-| 3 | `more-seats` | Need 10 seats with only 5 left: assign 5 now, send a seat upgrade request for 5 more |
+| 3 | `more-seats` | Only 5 seats left: Fluxby's approval process, then assign 5 now and request 5 more |
 
 ## How it works
 
 1. **Capture** (`scripts/capture.mjs`): Playwright runs each flow in `scripts/flows.mjs` against the
-   running prototype. It records the screen at 2× through the DevTools screencast and logs every
-   click, scroll, caption and speed change on the same clock.
+   running prototype at the design's 1440×1024. It records the screen at 2× through the DevTools
+   screencast and logs every click, scroll, caption and speed change on the same clock.
 2. **Build** (`scripts/build.mjs`): applies the speed-ups and writes the screen as a steady 60fps
    clip (`public/<flow>/screen.mp4`) plus a timeline of events (`src/timelines/<flow>.json`).
 3. **Render** (`src/`, Remotion): places the clip in a browser window and adds the camera, cursor
-   and captions from the timeline.
+   and captions from the timeline. The window leaves out the nav sidebar, so the page keeps its
+   full design width and still fits the square frame.
 
 ## Making the videos
 
@@ -44,7 +45,9 @@ download its own browser.
 - **Clicks, zoom and pacing**: edit `scripts/flows.mjs`. `click(target, { zoom, hold, travel })`
   sets how far the camera zooms (`zoom: false` stays wide) and how long it stays there.
   `focus()` zooms without clicking, `caption()` changes the caption, and `speed(2)` plays what
-  follows twice as fast until the next `speed(1)`. Then run capture, build and render again.
+  follows twice as fast until the next `speed(1)`. A flow's `crop` sets how much of the page's
+  left edge stays out of frame, and `ready` lets it start filming as soon as some content
+  appears. Then run capture, build and render again.
 - **Look**: `src/Walkthrough.tsx` holds the window frame, background, cursor, ripple and caption
   styles. `src/timeline.ts` holds the camera timing (glide duration, when to pan instead of
   zooming out).

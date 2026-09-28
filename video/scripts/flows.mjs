@@ -65,26 +65,30 @@ const access = {
     speed(2.5);
     await wait(2700);
     speed(1);
-    await focus(page.getByText("Assigned members x", { exact: false }), { zoom: 1.5, hold: 2.3, at: [1.2, 3] });
+    await focus(page.locator("aside").last(), { zoom: 1.35, hold: 2.3, at: [0.5, 0.56] });
     await wait(3300);
   },
 };
 
 const moreSeats = {
-  path: "/?start=results",
+  // Opens on Fluxby's answer to "I want 5 more seats", so the approval process is the first thing seen.
+  path: "/?start=more-seats",
+  // Start filming as soon as the process card appears, so its steps land on camera.
+  ready: (page) => page.getByText("Process (~3 weeks)").waitFor(),
   async script({ page, click, focus, scrollTo, wait, caption, speed }) {
-    caption("Need 10 seats? Only 5 are left");
-    await wait(300);
-    await click(page.getByPlaceholder("Ask Fluxby AI"), { zoom: 1.6, hold: 0.5, travel: 600 });
-    await wait(450);
-    await click(page.getByRole("button", { name: "Send" }), { zoom: 1.6, hold: 0.2, travel: 350, pause: 150, out: true });
+    caption("Fluxby lays out the approval process");
+    const process = page.getByText("Process (~3 weeks)").locator("..");
+    await focus(process, { zoom: 1.45, hold: 4.6, at: [0.5, 0.32] });
+    await wait(2600);
+    // Glide down the steps while the camera holds on the card.
+    await scrollTo(process, { block: "end", offset: 60, ms: 1900 });
+    await wait(600);
 
-    await wait(250);
-    speed(3);
+    speed(2.5);
     await scrollTo(page.getByRole("heading", { name: "How would you like to proceed?" }), {
       block: "start",
       offset: -120,
-      ms: 2200,
+      ms: 2000,
     });
     speed(1);
     caption("Assign 5 now, request 5 more");
@@ -95,7 +99,7 @@ const moreSeats = {
       out: true,
     });
 
-    speed(2);
+    speed(2.2);
     await wait(800);
     await click(page.getByPlaceholder("Search for team members"), { zoom: 1.7, hold: 0.3, travel: 450 });
     await wait(200);
@@ -104,7 +108,8 @@ const moreSeats = {
       await click(member(name), { zoom: 1.7, hold: 0.2, travel: 350, pause: 120 });
     await click(page.getByRole("button", { name: /Give access/ }), { zoom: 1.7, hold: 0.2, travel: 400, out: true });
     speed(3);
-    await wait(2900);
+    // Assigning takes 2s, then the log panel slides open.
+    await wait(3400);
     speed(1);
 
     caption("Raise a seat upgrade request");
