@@ -19,6 +19,7 @@ import {
   SCENES,
   TAKES,
   baseScale,
+  visibleHeight,
   sceneRate,
   type Act,
   type Layout,
@@ -35,7 +36,7 @@ function view(cam: CameraState, layout: Layout) {
   const { stage } = layout;
   const scale = baseScale(layout) * cam.zoom;
   const left = cam.x - (PAGE.width - PAGE.cropLeft) / cam.zoom / 2;
-  const top = cam.y - PAGE.height / cam.zoom / 2;
+  const top = cam.y - visibleHeight / cam.zoom / 2;
   return {
     scale,
     left,
@@ -53,7 +54,7 @@ export function Launch({ layout }: { layout: Layout }) {
   return (
     <AbsoluteFill style={{ background: "#0b6b45", fontFamily: FONT }}>
       <Backdrop progress={t / DURATION} />
-      {/* Deepen the marble a touch and give the type a calm field to sit on. */}
+      {/* Darken the marble so all white type clears WCAG AAA (7:1); see SCRIM. */}
       <AbsoluteFill style={{ background: layout.scrim }} />
 
       {ACTS.map((act) => (
@@ -246,7 +247,7 @@ function Hook({ t, layout }: { t: number; layout: Layout }) {
           fontWeight: 600,
           whiteSpace: "nowrap",
           color: mixColor(WHITE, HOOK.headingAt.color, ink),
-          opacity: eyebrowIn * mix(0.86, 1, m),
+          opacity: eyebrowIn,
         }}
       >
         {HOOK.heading}
@@ -325,7 +326,7 @@ function Headline({ act, t, layout }: { act: Act; t: number; layout: Layout }) {
           fontSize: headline.line,
           fontWeight: 500,
           lineHeight: 1.35,
-          color: "rgba(255,255,255,0.84)",
+          color: WHITE,
           opacity: line,
           transform: `translateY(${(1 - line) * 10}px)`,
         }}
@@ -371,7 +372,7 @@ function Lockup({ t, layout }: { t: number; layout: Layout }) {
           return (
             <span
               key={b}
-              style={{ opacity: bk * 0.9, transform: `translateY(${(1 - bk) * 12}px)`, display: "inline-block" }}
+              style={{ opacity: bk, transform: `translateY(${(1 - bk) * 12}px)`, display: "inline-block" }}
             >
               {b}
             </span>

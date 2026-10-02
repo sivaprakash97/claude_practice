@@ -23,10 +23,15 @@ export const mark = (take: TakeId, name: string) => find(take, "mark", name);
 export const click = (take: TakeId, name: string) => find(take, "click", name);
 
 // ── Page and stage geometry ─────────────────────────────────────────────────
-// Takes are 1440×1024 pages; the stage shows them without the nav sidebar.
+// Takes are 1440×1024 pages. The stage is a window onto them in the product screen's own
+// proportions (1040×800): the nav sidebar is cropped off the left and the sliver of page
+// that does not fit the window (top and bottom) is left out.
 export const PAGE = { width: 1440, height: 1024, cropLeft: 184 };
+export const STAGE_ASPECT = 1040 / 800;
 const visibleWidth = PAGE.width - PAGE.cropLeft;
-const stageHeight = (width: number) => (PAGE.height * width) / visibleWidth;
+/** Page pixels visible at zoom 1. */
+export const visibleHeight = visibleWidth / STAGE_ASPECT;
+const stageHeight = (width: number) => width / STAGE_ASPECT;
 
 // ── Formats ─────────────────────────────────────────────────────────────────
 // The edit is shared; each format only places the stage, the type and the lockup.
@@ -39,30 +44,35 @@ export type Layout = {
   /** Opening type, before it lands on the UI. */
   hook: { eyebrowTop: number; promptTop: number; heading: number; mark: number; prompt: number };
   lockup: { mark: number; word: number; beats: number };
-  /** Shade over the backdrop so white type reads. */
+  /** Shade over the backdrop so white type reads (see SCRIM). */
   scrim: string;
 };
+
+/**
+ * Shade over the jade backdrop. Pure white type needs 7:1 (WCAG AAA, normal text) against
+ * the brightest pixel of the image, a white vein at luminance ~0.98. Blending rgb(0,22,14)
+ * at 75% brings that pixel to ~8.6:1 and the typical jade to ~13:1, wherever the type sits.
+ */
+export const SCRIM = "rgba(0,22,14,0.75)";
 
 export const LAYOUTS: Record<"square" | "wide", Layout> = {
   square: {
     width: 1080,
     height: 1080,
-    stage: { x: 40, y: 225, width: 1000, height: stageHeight(1000), radius: 20 },
+    stage: { x: 40, y: 252, width: 1000, height: stageHeight(1000), radius: 20 },
     headline: { left: 48, top: 66, width: 984, title: 58, line: 23 },
     hook: { eyebrowTop: 436, promptTop: 498, heading: 32, mark: 40, prompt: 46 },
     lockup: { mark: 84, word: 82, beats: 30 },
-    scrim:
-      "linear-gradient(180deg, rgba(0,34,20,0.42) 0%, rgba(0,34,20,0.16) 30%, rgba(0,34,20,0.10) 70%, rgba(0,34,20,0.30) 100%)",
+    scrim: SCRIM,
   },
   wide: {
     width: 1920,
     height: 1080,
-    stage: { x: 720, y: (1080 - stageHeight(1104)) / 2, width: 1104, height: stageHeight(1104), radius: 22 },
-    headline: { left: 104, top: 430, width: 580, title: 72, line: 28 },
+    stage: { x: 740, y: (1080 - stageHeight(1120)) / 2, width: 1120, height: stageHeight(1120), radius: 22 },
+    headline: { left: 100, top: 436, width: 580, title: 72, line: 28 },
     hook: { eyebrowTop: 420, promptTop: 498, heading: 44, mark: 54, prompt: 66 },
     lockup: { mark: 112, word: 110, beats: 40 },
-    scrim:
-      "linear-gradient(90deg, rgba(0,34,20,0.46) 0%, rgba(0,34,20,0.24) 32%, rgba(0,34,20,0.10) 60%, rgba(0,34,20,0.22) 100%)",
+    scrim: SCRIM,
   },
 };
 
@@ -72,7 +82,7 @@ export const baseScale = (layout: Layout) => layout.stage.width / visibleWidth;
 /** Keep a framing inside the visible page so the stage never shows past its edges. */
 export function frame(x: number, y: number, zoom: number) {
   const halfW = visibleWidth / zoom / 2;
-  const halfH = PAGE.height / zoom / 2;
+  const halfH = visibleHeight / zoom / 2;
   return {
     x: Math.min(PAGE.width - halfW, Math.max(PAGE.cropLeft + halfW, x)),
     y: Math.min(PAGE.height - halfH, Math.max(halfH, y)),
@@ -93,25 +103,26 @@ const scene = (id: string, take: TakeId, from: number, to: number, start: number
 });
 
 export const HOOK_END = 2.9;
-export const CLOSE_START = 18.05;
+export const CLOSE_START = 17.6;
 
+// Only the moments that carry the story: the suggestion, the catalogue with its
+// recommendation, the seat picker and log, the drafted request and its confirmation.
 export const SCENES: Scene[] = [
   // Find it
-  scene("suggest", "A", mark("A", "prompt").t, mark("A", "questions").t + 0.06, HOOK_END, 4.4),
-  scene("questions", "A", mark("A", "questions").t + 0.06, click("A", "q2").t + 0.05, 4.4, 5.75),
+  scene("suggest", "A", mark("A", "prompt").t, click("A", "suggestion").t + 0.35, HOOK_END, 4.4),
   // Only the inventory steps: "Checking the inventory…", "…already uses the tool…".
-  scene("thinking", "A", click("A", "submit").t + 1.02, mark("A", "results").t - 0.06, 5.75, 6.55),
-  scene("results", "A", mark("A", "results").t - 0.06, click("A", "getAccess").t + 0.12, 6.55, 8.6),
+  scene("thinking", "A", click("A", "submit").t + 1.02, mark("A", "results").t - 0.06, 4.4, 5.0),
+  scene("results", "A", mark("A", "results").t - 0.06, click("A", "getAccess").t + 0.12, 5.0, 7.5),
   // Get access
-  scene("assign", "A", click("A", "getAccess").t + 0.12, click("A", "giveAccess").t + 0.12, 8.6, 11.4),
-  scene("assigning", "A", click("A", "giveAccess").t + 0.12, mark("A", "assigned").t, 11.4, 11.9),
-  scene("log", "A", mark("A", "assigned").t, mark("A", "logMembers").t + 1.4, 11.9, 13.4),
+  scene("assign", "A", click("A", "getAccess").t + 0.12, click("A", "giveAccess").t + 0.12, 7.5, 10.4),
+  scene("assigning", "A", click("A", "giveAccess").t + 0.12, mark("A", "assigned").t, 10.4, 10.9),
+  scene("log", "A", mark("A", "assigned").t, mark("A", "logMembers").t + 1.4, 10.9, 12.4),
   // Get approval: take B opens on the same log, so the cut is invisible
-  scene("ask", "B", 0.05, click("B", "proceed").t + 0.12, 13.4, 14.5),
-  scene("creating", "B", click("B", "proceed").t + 0.12, mark("B", "doc").t + 0.05, 14.5, 15.0),
-  scene("request", "B", mark("B", "doc").t + 0.05, mark("B", "submitArea").t, 15.0, 16.5),
-  scene("submit", "B", mark("B", "submitArea").t, mark("B", "modal").t - 0.1, 16.5, 17.1),
-  scene("submitted", "B", mark("B", "modal").t - 0.1, mark("B", "modal").t + 0.85, 17.1, CLOSE_START + 0.6),
+  scene("ask", "B", 0.05, click("B", "proceed").t + 0.12, 12.4, 13.6),
+  scene("creating", "B", click("B", "proceed").t + 0.12, mark("B", "doc").t + 0.05, 13.6, 14.2),
+  scene("request", "B", mark("B", "doc").t + 0.05, mark("B", "submitArea").t, 14.2, 15.9),
+  scene("submit", "B", mark("B", "submitArea").t, mark("B", "modal").t - 0.1, 15.9, 16.6),
+  scene("submitted", "B", mark("B", "modal").t - 0.1, mark("B", "modal").t + 1.6, 16.6, CLOSE_START + 0.6),
 ];
 
 export const sceneRate = (s: Scene) => (s.to - s.from) / (s.end - s.start);
@@ -157,35 +168,26 @@ const cut = (x: number, y: number, zoom: number, t: number) => at(x, y, zoom, t,
 export const HOOK_CAMERA = frame(557, 301, 1.7);
 
 const suggestionClick = filmTime("suggest", click("A", "suggestion").t);
-const getAccess = filmTime("results", click("A", "getAccess").t);
-const panelOpens = filmTime("log", mark("A", "assigned").t + 0.55);
-const proceed = filmTime("ask", click("B", "proceed").t);
 const docAppears = filmTime("request", mark("B", "doc").t + 0.05);
 
+// A few slow moves: the whole product screen (page centre x 812, y 541: the greeting bar
+// above the window is cropped, the page's bottom edge is kept) is the default framing and
+// the camera only leans in where the eye is meant to go, always on a clean panel edge.
+const WHOLE = { x: 812, y: 541 };
 export const CAMERA: CameraKey[] = [
   cut(HOOK_CAMERA.x, HOOK_CAMERA.y, HOOK_CAMERA.zoom, 0),
-  // The chosen prompt becomes the thread title: follow it into the research view.
-  at(812, 360, 1.6, suggestionClick + 0.62, 0.55),
-  // Thinking: hold on Fluxby's working steps.
-  cut(812, 256, 1.95, 5.75),
-  at(790, 250, 2.15, 6.5, 0.75),
-  // Results: open wide on the catalogue, then push into the recommendation.
-  cut(812, 470, 1.3, 6.55),
-  at(690, 560, 1.95, 7.75, 1.0),
-  // Get access: settle on the seat picker as the new turn arrives.
-  at(812, 470, 1.55, getAccess + 0.75, 0.6),
-  // Assigning: pull out so the log can slide in.
-  at(812, 512, 1.0, 12.05, 0.65),
-  // The log slides in; track with it and let it fill the frame.
-  at(1021, 450, 1.5, panelOpens + 0.85, 0.85),
-  // (cut to take B on the same framing) then pan to Fluxby's offer.
-  at(600, 545, 1.6, 14.2, 0.6),
-  at(600, 380, 1.6, proceed + 0.5, 0.45),
-  // The drafted request replaces the log: move onto it, then a slow push.
-  at(1045, 330, 1.6, docAppears + 0.6, 0.6),
-  at(1045, 320, 1.72, 16.45, 0.85),
-  at(1048, 704, 1.6, 16.95, 0.42),
-  at(720, 515, 1.45, 17.55, 0.5),
+  // Ease back from the landed home screen to the whole product screen.
+  at(WHOLE.x, WHOLE.y, 1.0, suggestionClick + 1.3, 1.1),
+  // Results: a slow lean onto the catalogue column and its recommendation.
+  at(855, 600, 1.35, 7.2, 2.0),
+  // Seat picker and the log: the whole screen, so the chat and the panel stay in frame.
+  at(WHOLE.x, WHOLE.y, 1.0, 8.5, 1.0),
+  // The drafted request replaces the log: lean onto the document panel (it starts at page
+  // x≈614), then follow the page down to the submit button.
+  at(1027, 520, 1.52, docAppears + 1.1, 1.2),
+  at(1027, 700, 1.52, 16.2, 1.0),
+  // The confirmation lands in the middle of the screen.
+  at(WHOLE.x, WHOLE.y, 1.0, 17.2, 0.9),
 ];
 
 // ── Typography ──────────────────────────────────────────────────────────────
@@ -195,13 +197,13 @@ export const ACTS: Act[] = [
     title: "Find it.",
     line: "Fluxby researches the options and checks what your team already has.",
     start: 3.05,
-    end: 8.45,
+    end: 7.35,
   },
-  { title: "Get access.", line: "Assign open seats in a few clicks, logged automatically.", start: 8.65, end: 13.3 },
-  { title: "Get approval.", line: "Need more seats? Fluxby drafts the request for you.", start: 13.5, end: 17.95 },
+  { title: "Get access.", line: "Assign open seats in a few clicks, logged automatically.", start: 7.55, end: 12.25 },
+  { title: "Get approval.", line: "Need more seats? Fluxby drafts the request for you.", start: 12.45, end: 17.45 },
 ];
 
 export const CLOSE = { stageOut: CLOSE_START, lockupIn: CLOSE_START + 0.4, beats: ["Find it.", "Get access.", "Get approval."] };
 
 /** The cursor is on screen from the first interaction to the submit. */
-export const CURSOR = { in: HOOK_END + 0.05, out: 17.3 };
+export const CURSOR = { in: HOOK_END + 0.05, out: 16.95 };
