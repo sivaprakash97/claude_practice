@@ -9,6 +9,29 @@ on each click, and the videos add a smooth cursor, click ripples and captions.
 | 2 | `access` | Get access to Runway and pick the teammates who need a seat |
 | 3 | `more-seats` | Only 5 seats left: Fluxby's approval process, then assign 5 now and request 5 more |
 
+### Launch film
+
+`launch` is a 20-second edited film of the whole story, cut from two takes recorded for it
+(`launch-a`: home screen → license log, `launch-b`: seat upgrade request → submitted):
+
+| Time | Beat |
+| --- | --- |
+| 0–2.9s | The prompt types out large, then lands exactly on the real home screen's heading and input |
+| 2.9–8.6s | **Find it.** A suggestion, one clarifying question, the inventory check, Runway with 5 seats left |
+| 8.6–13.4s | **Get access.** Five teammates assigned, the license log slides in |
+| 13.4–18s | **Get approval.** An invisible cut on the same log, then the drafted seat upgrade request is submitted |
+| 18–20s | Fluxby AI lockup |
+
+The edit lives in `src/launch/config.ts`: scenes cut each take between named marks and clicks
+(logged by `scripts/launch-flows.mjs`) and stretch the cut to its slot, so re-recording keeps the
+timing. Camera framings, headlines and hook timing are in the same file; easing and the camera
+interpolation are in `src/launch/motion.ts`.
+
+```bash
+npm run capture -- launch-a launch-b && npm run build -- launch-a launch-b
+npx remotion render src/index.ts launch out/launch.mp4
+```
+
 ## How it works
 
 1. **Capture** (`scripts/capture.mjs`): Playwright runs each flow in `scripts/flows.mjs` against the

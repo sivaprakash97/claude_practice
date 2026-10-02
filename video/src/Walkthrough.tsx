@@ -127,7 +127,7 @@ export function Walkthrough({ timeline }: { timeline: Timeline }) {
 }
 
 /** The backdrop drifts slowly across the clip so the frame never sits completely still. */
-function Backdrop({ progress }: { progress: number }) {
+export function Backdrop({ progress }: { progress: number }) {
   return (
     <Img
       src={staticFile(BACKGROUND)}
@@ -186,7 +186,7 @@ function WindowBar() {
   );
 }
 
-function Cursor({ at, press, size, opacity }: { at: Point; press: number; size: number; opacity: number }) {
+export function Cursor({ at, press, size, opacity }: { at: Point; press: number; size: number; opacity: number }) {
   const s = size * (1 - 0.18 * press);
   return (
     <svg
@@ -216,7 +216,7 @@ function Cursor({ at, press, size, opacity }: { at: Point; press: number; size: 
   );
 }
 
-function Ripple({ at, age, size }: { at: Point; age: number; size: number }) {
+export function Ripple({ at, age, size }: { at: Point; age: number; size: number }) {
   const LIFE = 0.55;
   if (age < 0 || age > LIFE) return null;
   const k = age / LIFE;

@@ -143,7 +143,7 @@ export async function record({ name, url, script, outDir, crop = { x: 184 }, rea
    * out: pull back to the full window afterwards instead of panning on (for clicks that change the page).
    * at: [x, y] fractions inside the element for where the cursor lands (default centre).
    */
-  const click = async (target, { zoom = 1.8, hold = 0.9, travel = 700, pause = 250, at = [0.5, 0.5], out = false } = {}) => {
+  const click = async (target, { zoom = 1.8, hold = 0.9, travel = 700, pause = 250, at = [0.5, 0.5], out = false, name } = {}) => {
     await target.waitFor({ state: "visible" });
     await reveal(target);
     const b = await box(target);
@@ -169,7 +169,7 @@ export async function record({ name, url, script, outDir, crop = { x: 184 }, rea
       await sleep(120);
     }
     mouse = to;
-    log("click", { x: to.x, y: to.y, from, moveStart, moveEnd, zoom, hold, out });
+    log("click", { x: to.x, y: to.y, from, moveStart, moveEnd, zoom, hold, out, ...(name && { name }) });
     await page.mouse.down();
     await sleep(70);
     await page.mouse.up();
@@ -181,10 +181,17 @@ export async function record({ name, url, script, outDir, crop = { x: 184 }, rea
     log("focus", { x: b.x + b.width * at[0], y: b.y + b.height * at[1], zoom, hold });
   };
 
+  /** Name this moment, and optionally where an element is, for an edit to cut or frame by. */
+  const mark = async (name, target) => {
+    const b = target ? await box(target) : undefined;
+    log("mark", { name, ...(b && { box: { x: b.x, y: b.y, w: b.width, h: b.height } }) });
+  };
+
   const api = {
     page,
     click,
     focus,
+    mark,
     scrollTo,
     wait: (ms) => sleep(ms),
     caption: (text) => log("caption", { text }),

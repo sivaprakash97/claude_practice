@@ -71,7 +71,7 @@ for (const name of names) {
   if (!existsSync(video)) throw new Error(`No video written for ${name}`);
 
   const events = rec.events
-    .filter((e) => ["click", "focus", "caption"].includes(e.kind))
+    .filter((e) => ["click", "focus", "caption", "mark"].includes(e.kind))
     .map((e) => {
       const ev = { ...e, t: toVideo(e.t) };
       if (e.moveStart !== undefined) ev.moveStart = toVideo(e.moveStart);
