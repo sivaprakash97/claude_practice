@@ -9,7 +9,6 @@ import { EASE, type CameraKey } from "./motion";
 
 export const FPS = 60;
 export const DURATION = 20;
-export const SIZE = 1080;
 
 export const TAKES = { A: takeA as Timeline, B: takeB as Timeline };
 export type TakeId = keyof typeof TAKES;
@@ -27,9 +26,48 @@ export const click = (take: TakeId, name: string) => find(take, "click", name);
 // Takes are 1440×1024 pages; the stage shows them without the nav sidebar.
 export const PAGE = { width: 1440, height: 1024, cropLeft: 184 };
 const visibleWidth = PAGE.width - PAGE.cropLeft;
-export const STAGE = { x: 40, y: 225, width: 1000, height: (PAGE.height * 1000) / visibleWidth, radius: 20 };
+const stageHeight = (width: number) => (PAGE.height * width) / visibleWidth;
+
+// ── Formats ─────────────────────────────────────────────────────────────────
+// The edit is shared; each format only places the stage, the type and the lockup.
+export type Layout = {
+  width: number;
+  height: number;
+  stage: { x: number; y: number; width: number; height: number; radius: number };
+  /** Act headlines: above the stage (square) or in a column beside it (wide). */
+  headline: { left: number; top: number; width: number; title: number; line: number };
+  /** Opening type, before it lands on the UI. */
+  hook: { eyebrowTop: number; promptTop: number; heading: number; mark: number; prompt: number };
+  lockup: { mark: number; word: number; beats: number };
+  /** Shade over the backdrop so white type reads. */
+  scrim: string;
+};
+
+export const LAYOUTS: Record<"square" | "wide", Layout> = {
+  square: {
+    width: 1080,
+    height: 1080,
+    stage: { x: 40, y: 225, width: 1000, height: stageHeight(1000), radius: 20 },
+    headline: { left: 48, top: 66, width: 984, title: 58, line: 23 },
+    hook: { eyebrowTop: 436, promptTop: 498, heading: 32, mark: 40, prompt: 46 },
+    lockup: { mark: 84, word: 82, beats: 30 },
+    scrim:
+      "linear-gradient(180deg, rgba(0,34,20,0.42) 0%, rgba(0,34,20,0.16) 30%, rgba(0,34,20,0.10) 70%, rgba(0,34,20,0.30) 100%)",
+  },
+  wide: {
+    width: 1920,
+    height: 1080,
+    stage: { x: 720, y: (1080 - stageHeight(1104)) / 2, width: 1104, height: stageHeight(1104), radius: 22 },
+    headline: { left: 104, top: 430, width: 580, title: 72, line: 28 },
+    hook: { eyebrowTop: 420, promptTop: 498, heading: 44, mark: 54, prompt: 66 },
+    lockup: { mark: 112, word: 110, beats: 40 },
+    scrim:
+      "linear-gradient(90deg, rgba(0,34,20,0.46) 0%, rgba(0,34,20,0.24) 32%, rgba(0,34,20,0.10) 60%, rgba(0,34,20,0.22) 100%)",
+  },
+};
+
 /** Canvas pixels per page pixel at zoom 1. */
-export const BASE_SCALE = STAGE.width / visibleWidth;
+export const baseScale = (layout: Layout) => layout.stage.width / visibleWidth;
 
 /** Keep a framing inside the visible page so the stage never shows past its edges. */
 export function frame(x: number, y: number, zoom: number) {

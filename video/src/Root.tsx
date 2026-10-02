@@ -4,7 +4,7 @@ import moreSeats from "./timelines/more-seats.json";
 import research from "./timelines/research.json";
 import type { Timeline } from "./timeline";
 import { SIZE, Walkthrough } from "./Walkthrough";
-import { DURATION, FPS } from "./launch/config";
+import { DURATION, FPS, LAYOUTS } from "./launch/config";
 import { Launch } from "./launch/Launch";
 
 // One square video per flow. Re-run the capture and build scripts to refresh a timeline.
@@ -26,7 +26,18 @@ export function Root() {
         />
       ))}
       {/* The 20-second launch film cut from the launch-a and launch-b takes. */}
-      <Composition id="launch" component={Launch} width={SIZE} height={SIZE} fps={FPS} durationInFrames={DURATION * FPS} />
+      {(["square", "wide"] as const).map((format) => (
+        <Composition
+          key={format}
+          id={format === "square" ? "launch" : "launch-wide"}
+          component={Launch}
+          width={LAYOUTS[format].width}
+          height={LAYOUTS[format].height}
+          fps={FPS}
+          durationInFrames={DURATION * FPS}
+          defaultProps={{ layout: LAYOUTS[format] }}
+        />
+      ))}
     </>
   );
 }

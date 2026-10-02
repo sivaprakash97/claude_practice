@@ -11,8 +11,11 @@ on each click, and the videos add a smooth cursor, click ripples and captions.
 
 ### Launch film
 
-`launch` is a 20-second edited film of the whole story, cut from two takes recorded for it
-(`launch-a`: home screen → license log, `launch-b`: seat upgrade request → submitted):
+`launch` (1080×1080) and `launch-wide` (1920×1080) are the same 20-second edited film of the
+whole story, cut from two takes recorded for it (`launch-a`: home screen → license log,
+`launch-b`: seat upgrade request → submitted). The wide version puts the act headlines in a
+column beside the product instead of above it; `LAYOUTS` in `src/launch/config.ts` holds each
+format's placement.
 
 | Time | Beat |
 | --- | --- |
@@ -30,6 +33,7 @@ interpolation are in `src/launch/motion.ts`.
 ```bash
 npm run capture -- launch-a launch-b && npm run build -- launch-a launch-b
 npx remotion render src/index.ts launch out/launch.mp4
+npx remotion render src/index.ts launch-wide out/launch-wide.mp4
 ```
 
 ## How it works

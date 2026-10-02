@@ -6,7 +6,6 @@ import { cursorAt, type ClickEvent, type Point } from "../timeline";
 import { Backdrop, Cursor, Ripple } from "../Walkthrough";
 import {
   ACTS,
-  BASE_SCALE,
   CAMERA,
   CLOSE,
   CLOSE_START,
@@ -18,11 +17,11 @@ import {
   HOOK_END,
   PAGE,
   SCENES,
-  SIZE,
-  STAGE,
   TAKES,
+  baseScale,
   sceneRate,
   type Act,
+  type Layout,
   type Scene,
 } from "./config";
 import { EASE, cameraAt, clamp01, mix, mixColor, progress, type CameraState } from "./motion";
@@ -32,49 +31,46 @@ const WHITE = "#ffffff";
 const FONT = "Manrope";
 
 /** Page-to-stage transform for a camera framing. */
-function view(cam: CameraState) {
-  const scale = BASE_SCALE * cam.zoom;
+function view(cam: CameraState, layout: Layout) {
+  const { stage } = layout;
+  const scale = baseScale(layout) * cam.zoom;
   const left = cam.x - (PAGE.width - PAGE.cropLeft) / cam.zoom / 2;
   const top = cam.y - PAGE.height / cam.zoom / 2;
   return {
     scale,
     left,
     top,
-    toCanvas: (p: Point): Point => ({ x: STAGE.x + (p.x - left) * scale, y: STAGE.y + (p.y - top) * scale }),
+    toCanvas: (p: Point): Point => ({ x: stage.x + (p.x - left) * scale, y: stage.y + (p.y - top) * scale }),
   };
 }
 
-export function Launch() {
+export function Launch({ layout }: { layout: Layout }) {
   const frame = useCurrentFrame();
   const t = frame / FPS;
   const cam = cameraAt(CAMERA, t);
-  const v = view(cam);
+  const v = view(cam, layout);
 
   return (
     <AbsoluteFill style={{ background: "#0b6b45", fontFamily: FONT }}>
       <Backdrop progress={t / DURATION} />
       {/* Deepen the marble a touch and give the type a calm field to sit on. */}
-      <AbsoluteFill
-        style={{
-          background:
-            "linear-gradient(180deg, rgba(0,34,20,0.42) 0%, rgba(0,34,20,0.16) 30%, rgba(0,34,20,0.10) 70%, rgba(0,34,20,0.30) 100%)",
-        }}
-      />
+      <AbsoluteFill style={{ background: layout.scrim }} />
 
       {ACTS.map((act) => (
-        <Headline key={act.title} act={act} t={t} />
+        <Headline key={act.title} act={act} t={t} layout={layout} />
       ))}
 
-      <Stage t={t} v={v} />
-      <Hook t={t} />
-      <Lockup t={t} />
+      <Stage t={t} v={v} layout={layout} />
+      <Hook t={t} layout={layout} />
+      <Lockup t={t} layout={layout} />
     </AbsoluteFill>
   );
 }
 
 // ── Stage ───────────────────────────────────────────────────────────────────
 
-function Stage({ t, v }: { t: number; v: ReturnType<typeof view> }) {
+function Stage({ t, v, layout }: { t: number; v: ReturnType<typeof view>; layout: Layout }) {
+  const { stage } = layout;
   if (t < HOOK.stageIn || t > CLOSE_START + 0.45) return null;
   const enter = progress(t, HOOK.stageIn, HOOK.stageInDuration, EASE.out);
   const exit = progress(t, CLOSE_START, 0.42, EASE.inOut);
@@ -86,11 +82,11 @@ function Stage({ t, v }: { t: number; v: ReturnType<typeof view> }) {
     <div
       style={{
         position: "absolute",
-        left: STAGE.x,
-        top: STAGE.y,
-        width: STAGE.width,
-        height: STAGE.height,
-        borderRadius: STAGE.radius,
+        left: stage.x,
+        top: stage.y,
+        width: stage.width,
+        height: stage.height,
+        borderRadius: stage.radius,
         overflow: "hidden",
         background: "#fafafa",
         opacity,
@@ -187,9 +183,11 @@ function Pointer({ t, counter }: { t: number; counter: number }) {
 
 // ── Hook: large type that lands on the real UI ──────────────────────────────
 
-function Hook({ t }: { t: number }) {
+function Hook({ t, layout }: { t: number; layout: Layout }) {
   if (t > HOOK_END + 0.15) return null;
-  const land = view(HOOK_CAMERA);
+  const land = view(HOOK_CAMERA, layout);
+  const { hook } = layout;
+  const center = layout.width / 2;
   const m = progress(t, HOOK.morphStart, HOOK.morphEnd - HOOK.morphStart, EASE.inOut);
   // Colour turns from white to the UI's ink only once the stage is behind the type.
   const ink = Math.pow(m, 2.2);
@@ -197,12 +195,12 @@ function Hook({ t }: { t: number }) {
 
   // Eyebrow: Fluxby mark + "Ask Fluxby AI anything" → the home screen's heading.
   const eyebrowIn = progress(t, HOOK.eyebrowIn, 0.6, EASE.out);
-  const headStartSize = 32;
-  const markStartSize = 40;
-  const gap = 14;
+  const headStartSize = hook.heading;
+  const markStartSize = hook.mark;
+  const gap = hook.mark * 0.35;
   const headStartW = (HOOK.headingWidth * headStartSize) / HOOK.headingAt.size;
-  const rowLeft = SIZE / 2 - (markStartSize + gap + headStartW) / 2;
-  const rowTop = 436;
+  const rowLeft = center - (markStartSize + gap + headStartW) / 2;
+  const rowTop = hook.eyebrowTop;
   const markEnd = land.toCanvas(HOOK.markAt);
   const headEnd = land.toCanvas(HOOK.headingAt);
   const markSize = mix(markStartSize, HOOK.markAt.size * land.scale, m);
@@ -215,12 +213,12 @@ function Hook({ t }: { t: number }) {
   // Prompt: typed large, then settles into the input as its text.
   const typed = progress(t, HOOK.typeStart, HOOK.typeEnd - HOOK.typeStart, (p) => p);
   const chars = Math.round(typed * HOOK.prompt.length);
-  const promptStartSize = 46;
+  const promptStartSize = hook.prompt;
   const promptStartW = (HOOK.promptWidth * promptStartSize) / HOOK.promptAt.size;
   const promptEnd = land.toCanvas(HOOK.promptAt);
   const promptSize = mix(promptStartSize, HOOK.promptAt.size * land.scale, m);
-  const promptX = mix(SIZE / 2 - promptStartW / 2, promptEnd.x, m);
-  const promptY = mix(498, promptEnd.y, m);
+  const promptX = mix(center - promptStartW / 2, promptEnd.x, m);
+  const promptY = mix(hook.promptTop, promptEnd.y, m);
   const caretOn = t >= HOOK.typeStart - 0.2 && t < HOOK.morphStart && Math.floor(t * 2.4) % 2 === 0;
   const caretSolid = t >= HOOK.typeStart && t <= HOOK.typeEnd;
 
@@ -284,7 +282,8 @@ function Hook({ t }: { t: number }) {
 
 // ── Act headlines ───────────────────────────────────────────────────────────
 
-function Headline({ act, t }: { act: Act; t: number }) {
+function Headline({ act, t, layout }: { act: Act; t: number; layout: Layout }) {
+  const { headline } = layout;
   if (t < act.start - 0.05 || t > act.end + 0.05) return null;
   const words = act.title.split(" ");
   const out = progress(t, act.end - 0.32, 0.32, EASE.in);
@@ -293,15 +292,24 @@ function Headline({ act, t }: { act: Act; t: number }) {
     <div
       style={{
         position: "absolute",
-        left: 48,
-        top: 66,
-        width: SIZE - 96,
+        left: headline.left,
+        top: headline.top,
+        width: headline.width,
         opacity: 1 - out,
         transform: `translateY(${-out * 16}px)`,
         color: WHITE,
       }}
     >
-      <div style={{ display: "flex", gap: "0.26em", fontSize: 58, fontWeight: 700, letterSpacing: -1.6, lineHeight: 1.1 }}>
+      <div
+        style={{
+          display: "flex",
+          gap: "0.26em",
+          fontSize: headline.title,
+          fontWeight: 700,
+          letterSpacing: -headline.title * 0.028,
+          lineHeight: 1.1,
+        }}
+      >
         {words.map((w, i) => {
           const k = progress(t, act.start + i * 0.08, 0.62, EASE.out);
           return (
@@ -313,8 +321,8 @@ function Headline({ act, t }: { act: Act; t: number }) {
       </div>
       <div
         style={{
-          marginTop: 10,
-          fontSize: 23,
+          marginTop: headline.line * 0.45,
+          fontSize: headline.line,
           fontWeight: 500,
           lineHeight: 1.35,
           color: "rgba(255,255,255,0.84)",
@@ -330,8 +338,9 @@ function Headline({ act, t }: { act: Act; t: number }) {
 
 // ── Closing lockup ──────────────────────────────────────────────────────────
 
-function Lockup({ t }: { t: number }) {
+function Lockup({ t, layout }: { t: number; layout: Layout }) {
   if (t < CLOSE.lockupIn) return null;
+  const { lockup } = layout;
   const k = progress(t, CLOSE.lockupIn, 0.75, EASE.out);
   return (
     <AbsoluteFill style={{ alignItems: "center", justifyContent: "center", color: WHITE }}>
@@ -339,15 +348,24 @@ function Lockup({ t }: { t: number }) {
         style={{
           display: "flex",
           alignItems: "center",
-          gap: 22,
+          gap: lockup.mark * 0.26,
           opacity: k,
           transform: `translateY(${(1 - k) * 26 - 30}px) scale(${mix(0.96, 1, k)})`,
         }}
       >
-        <FluxbyMark size={84} />
-        <span style={{ fontSize: 82, fontWeight: 700, letterSpacing: -2.4 }}>Fluxby AI</span>
+        <FluxbyMark size={lockup.mark} />
+        <span style={{ fontSize: lockup.word, fontWeight: 700, letterSpacing: -lockup.word * 0.03 }}>Fluxby AI</span>
       </div>
-      <div style={{ display: "flex", gap: 16, marginTop: 6, fontSize: 30, fontWeight: 600, transform: "translateY(-6px)" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: lockup.beats * 0.53,
+          marginTop: lockup.beats * 0.2,
+          fontSize: lockup.beats,
+          fontWeight: 600,
+          transform: "translateY(-6px)",
+        }}
+      >
         {CLOSE.beats.map((b, i) => {
           const bk = progress(t, CLOSE.lockupIn + 0.45 + i * 0.16, 0.55, EASE.out);
           return (
