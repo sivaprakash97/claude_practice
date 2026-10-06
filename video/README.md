@@ -1,6 +1,8 @@
 # Walkthrough videos
 
-Square (1080×1080, 60fps) motion-graphic walkthroughs of the Fluxby prototype. The camera zooms in
+Square (1080×1080, 60fps) motion-graphic walkthroughs of the Fluxby prototype, each also rendered at
+1700×1056 (`<flow>-frame`, the 850×528 portfolio frame at 2x) with a wider window and the captions
+in a column on the left. The camera zooms in
 on each click, and the videos add a smooth cursor, click ripples and captions.
 
 | Flow | Composition | Story |
