@@ -129,4 +129,9 @@ const moreSeats = {
   },
 };
 
-export const FLOWS = { research, access, "more-seats": moreSeats };
+// The same flows in a wider, shorter browser window for the 1700×1056 portfolio frame
+// (src/Walkthrough.tsx FLOW_LAYOUTS.frame): 1631×760 fills its 1588×834 screen exactly once
+// the sidebar is cropped. Recorded at 2× so the larger on-screen page stays sharp when zoomed.
+const framed = (flow) => ({ ...flow, viewport: { width: 1631, height: 760 }, scale: 2 });
+
+export const FLOWS = { research, access, "more-seats": moreSeats, "research-frame": framed(research) };

@@ -24,20 +24,27 @@ const URL = "claude-practice-one.vercel.app";
 export type FlowLayout = {
   width: number;
   height: number;
-  window: { top: number; width: number; left?: number };
-  /** Captions in a pill under the window, or in a column beside it. */
-  caption: { mode: "bottom"; space: number } | { mode: "side"; left: number; width: number };
+  window: { top: number; width: number };
+  /** Height kept clear under the window for the caption pill. */
+  captionSpace: number;
+  /** Show the URL pill in the window's title bar. */
+  url?: boolean;
+  /** Scales how far each click zooms in (1 keeps the flow's own zoom levels). */
+  zoomFactor?: number;
 };
 
 export const FLOW_LAYOUTS: Record<"square" | "frame", FlowLayout> = {
-  square: { width: SIZE, height: SIZE, window: { top: 64, width: 1000 }, caption: { mode: "bottom", space: 130 } },
-  // 1700×1056: the 850×528 portfolio frame at 2x. The captions move to a column on the
-  // left so the window can be wider and use the full height.
+  square: { width: SIZE, height: SIZE, window: { top: 64, width: 1000 }, captionSpace: 130, url: true },
+  // 1700×1056: the 850×528 portfolio frame at 2x. The window fills the width with a 56px
+  // margin on the sides and top, and the caption sits under it as in the square videos. The
+  // flows are recorded in a shorter browser window for it (scripts/flows.mjs `framed`), and
+  // since the page is already larger on screen, clicks zoom in about half as far.
   frame: {
     width: 1700,
     height: 1056,
-    window: { top: 48, width: 1134, left: 1700 - 56 - 1134 },
-    caption: { mode: "side", left: 64, width: 420 },
+    window: { top: 56, width: 1700 - 2 * 56 },
+    captionSpace: 130,
+    zoomFactor: 0.45,
   },
 };
 
@@ -49,7 +56,7 @@ export function Walkthrough({ timeline, layout = FLOW_LAYOUTS.square }: { timeli
   const frame = useCurrentFrame();
   const { width: W, height: H } = layout;
   const WINDOW_WIDTH = layout.window.width;
-  const captionSpace = layout.caption.mode === "bottom" ? layout.caption.space : 0;
+  const { captionSpace } = layout;
   const { fps } = useVideoConfig();
   const t = frame / fps;
 
@@ -59,32 +66,33 @@ export function Walkthrough({ timeline, layout = FLOW_LAYOUTS.square }: { timeli
   const k = WINDOW_WIDTH / (timeline.viewport.width - cropX);
   const screenHeight = timeline.viewport.height * k;
   const win = {
-    left: layout.window.left ?? (W - WINDOW_WIDTH) / 2,
+    left: (W - WINDOW_WIDTH) / 2,
     top: layout.window.top,
     width: WINDOW_WIDTH,
     height: BAR + screenHeight,
   };
-  // The point on screen the camera centres its target on: the frame's centre, or the window's
-  // centre when the captions sit beside it, so a zoomed target stays clear of the caption.
-  const anchorX = layout.caption.mode === "side" ? win.left + win.width / 2 : W / 2;
+  const zoomFactor = layout.zoomFactor ?? 1;
   const toCanvas = (p: Point): Point => ({ x: win.left + (p.x - cropX) * k, y: win.top + BAR + p.y * k });
 
   const { keys, clicks } = useMemo(() => {
-    const wide: Camera = { scale: 1, x: anchorX, y: H / 2 };
+    const wide: Camera = { scale: 1, x: W / 2, y: H / 2 };
     // A zoomed view stays within the window, except that it can rise far enough for the
     // bottom of the window to clear the caption.
     const clampView = (c: Camera): Camera => {
-      // `before` and `after` are how far the view reaches either side of the camera point.
-      const fit = (v: number, lo: number, hi: number, before: number, after: number) =>
-        hi - lo < before + after ? (lo + hi) / 2 : Math.min(hi - after, Math.max(lo + before, v));
+      const fit = (v: number, lo: number, hi: number, half: number) =>
+        hi - lo < 2 * half ? (lo + hi) / 2 : Math.min(hi - half, Math.max(lo + half, v));
       return {
         scale: c.scale,
-        x: fit(c.x, win.left, win.left + win.width, anchorX / c.scale, (W - anchorX) / c.scale),
-        y: fit(c.y, win.top, win.top + win.height + captionSpace / c.scale, H / 2 / c.scale, H / 2 / c.scale),
+        x: fit(c.x, win.left, win.left + win.width, W / 2 / c.scale),
+        y: fit(c.y, win.top, win.top + win.height + captionSpace / c.scale, H / 2 / c.scale),
       };
     };
+    const scaleZoom = (z: number) => 1 + (z - 1) * zoomFactor;
+    const events = timeline.events.map((e) =>
+      e.kind === "focus" || (e.kind === "click" && e.zoom !== false) ? { ...e, zoom: scaleZoom(e.zoom as number) } : e,
+    );
     return {
-      keys: cameraKeys(timeline.events, wide, toCanvas, clampView),
+      keys: cameraKeys(events, wide, toCanvas, clampView),
       clicks: timeline.events.filter((e): e is ClickEvent => e.kind === "click"),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -106,7 +114,7 @@ export function Walkthrough({ timeline, layout = FLOW_LAYOUTS.square }: { timeli
       <AbsoluteFill
         style={{
           transformOrigin: "0 0",
-          transform: `translate(${anchorX}px, ${H / 2}px) scale(${cam.scale}) translate(${-cam.x}px, ${-cam.y}px)`,
+          transform: `translate(${W / 2}px, ${H / 2}px) scale(${cam.scale}) translate(${-cam.x}px, ${-cam.y}px)`,
         }}
       >
         <div
@@ -124,7 +132,7 @@ export function Walkthrough({ timeline, layout = FLOW_LAYOUTS.square }: { timeli
             transform: `translateY(${(1 - intro) * 24}px) scale(${0.97 + 0.03 * intro})`,
           }}
         >
-          <WindowBar />
+          <WindowBar url={layout.url ?? false} />
           <OffthreadVideo
             src={staticFile(`${timeline.name}/screen.mp4`)}
             muted
@@ -145,7 +153,7 @@ export function Walkthrough({ timeline, layout = FLOW_LAYOUTS.square }: { timeli
         <Cursor at={cursorPos} press={cursor.press} size={counter} opacity={intro} />
       </AbsoluteFill>
 
-      <Captions timeline={timeline} t={t} layout={layout} />
+      <Captions timeline={timeline} t={t} />
     </AbsoluteFill>
   );
 }
@@ -167,7 +175,7 @@ export function Backdrop({ progress }: { progress: number }) {
   );
 }
 
-function WindowBar() {
+function WindowBar({ url }: { url: boolean }) {
   return (
     <div
       style={{
@@ -186,7 +194,7 @@ function WindowBar() {
           <span key={i} style={{ width: 11, height: 11, borderRadius: 99, background: "#dcdcdf" }} />
         ))}
       </div>
-      <div
+      {url && <div
         style={{
           position: "absolute",
           left: "50%",
@@ -205,7 +213,7 @@ function WindowBar() {
         }}
       >
         {URL}
-      </div>
+      </div>}
     </div>
   );
 }
@@ -262,8 +270,7 @@ export function Ripple({ at, age, size }: { at: Point; age: number; size: number
   );
 }
 
-function Captions({ timeline, t, layout }: { timeline: Timeline; t: number; layout: FlowLayout }) {
-  const side = layout.caption.mode === "side" ? layout.caption : null;
+function Captions({ timeline, t }: { timeline: Timeline; t: number }) {
   const captions = timeline.events.filter((e) => e.kind === "caption");
   const FADE = 0.35;
   return (
@@ -282,13 +289,13 @@ function Captions({ timeline, t, layout }: { timeline: Timeline; t: number; layo
             key={c.t}
             style={{
               position: "absolute",
-              ...(side
-                ? { left: side.left, top: layout.height / 2, maxWidth: side.width, transform: `translate(0, calc(-50% + ${y}px))` }
-                : { left: "50%", bottom: 42, transform: `translate(-50%, ${y}px)`, whiteSpace: "nowrap" as const }),
+              left: "50%",
+              bottom: 42,
+              transform: `translate(-50%, ${y}px)`,
               opacity,
-              padding: side ? "18px 28px" : "14px 26px",
-              borderRadius: side ? 28 : 999,
-              lineHeight: 1.3,
+              whiteSpace: "nowrap",
+              padding: "14px 26px",
+              borderRadius: 999,
               background: "rgba(255,255,255,0.94)",
               color: INK,
               fontFamily: "Manrope",

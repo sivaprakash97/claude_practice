@@ -7,8 +7,8 @@ import { join } from "node:path";
 import { chromium } from "playwright-core";
 
 // The original 1440-wide design. The video crops the nav sidebar off the left (see `crop`).
-export const VIEWPORT = { width: 1440, height: 1024 };
-const SCALE = 1.5; // Device pixel ratio: 2160×1536 frames, sharp up to the 1.9× zooms the flows use.
+export const DEFAULT_VIEWPORT = { width: 1440, height: 1024 };
+const DEFAULT_SCALE = 1.5; // Device pixel ratio: 2160×1536 frames, sharp up to the 1.9× zooms the flows use.
 const CHROME = process.env.CHROME_PATH ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
 
 const now = () => Date.now() / 1000;
@@ -24,10 +24,13 @@ const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
 
 /**
  * crop: how much of the page's left edge the video leaves out (the nav sidebar by default).
+ * viewport, scale: the browser window size and pixel ratio (a shorter window for wide formats).
  * ready: waits until the page is ready to film; the video starts the moment it returns, so a
  * flow can start as soon as content appears and catch its entrance animations.
  */
-export async function record({ name, url, script, outDir, crop = { x: 184 }, ready }) {
+export async function record({ name, url, script, outDir, crop = { x: 184 }, ready, viewport, scale }) {
+  const VIEWPORT = viewport ?? DEFAULT_VIEWPORT;
+  const SCALE = scale ?? DEFAULT_SCALE;
   const frameDir = join(outDir, "frames");
   await rm(outDir, { recursive: true, force: true });
   await mkdir(frameDir, { recursive: true });
