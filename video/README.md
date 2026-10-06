@@ -1,8 +1,7 @@
 # Walkthrough videos
 
-Square (1080×1080, 60fps) motion-graphic walkthroughs of the Fluxby prototype. Flow 1 also has a
-1700×1056 version (`research-frame`, the 850×528 portfolio frame at 2x): the same flow recorded in a
-wider 1631×760 browser window, so the window fills the frame's width with even margins and the
+Square (1080×1080, 60fps) motion-graphic walkthroughs of the Fluxby prototype. Each flow also has a
+1700×1056 version (`<flow>-frame`, the 850×528 portfolio frame at 2x): the same flow recorded in a wider 1631×760 browser window, so the window fills the frame's width with even margins and the
 caption stays underneath. The camera zooms in
 on each click, and the videos add a smooth cursor, click ripples and captions.
 

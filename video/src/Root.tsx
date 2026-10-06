@@ -2,6 +2,8 @@ import { Composition } from "remotion";
 import access from "./timelines/access.json";
 import moreSeats from "./timelines/more-seats.json";
 import research from "./timelines/research.json";
+import accessFrame from "./timelines/access-frame.json";
+import moreSeatsFrame from "./timelines/more-seats-frame.json";
 import researchFrame from "./timelines/research-frame.json";
 import type { Timeline } from "./timeline";
 import { FLOW_LAYOUTS, Walkthrough } from "./Walkthrough";
@@ -27,7 +29,7 @@ export function Root() {
         />
       ))}
       {/* Flows recorded in the frame format's shorter browser window (scripts/flows.mjs `framed`). */}
-      {([researchFrame] as Timeline[]).map((timeline) => (
+      {([researchFrame, accessFrame, moreSeatsFrame] as Timeline[]).map((timeline) => (
         <Composition
           key={timeline.name}
           id={timeline.name}

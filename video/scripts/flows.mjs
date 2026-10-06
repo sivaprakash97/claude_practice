@@ -134,4 +134,7 @@ const moreSeats = {
 // the sidebar is cropped. Recorded at 2× so the larger on-screen page stays sharp when zoomed.
 const framed = (flow) => ({ ...flow, viewport: { width: 1631, height: 760 }, scale: 2 });
 
-export const FLOWS = { research, access, "more-seats": moreSeats, "research-frame": framed(research) };
+export const FLOWS = { research, access, "more-seats": moreSeats, "research-frame": framed(research),
+  "access-frame": framed(access),
+  "more-seats-frame": framed(moreSeats),
+};
