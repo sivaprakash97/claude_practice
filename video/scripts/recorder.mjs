@@ -12,7 +12,6 @@ const DEFAULT_SCALE = 1.5; // Device pixel ratio: 2160×1536 frames, sharp up to
 const CHROME = process.env.CHROME_PATH ?? "/opt/pw-browsers/chromium-1194/chrome-linux/chrome";
 
 const now = () => Date.now() / 1000;
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // Same curve the video draws the cursor along (src/timeline.ts), so hover states line up.
 const arc = (a, b, k) => {
   const cx = (a.x + b.x) / 2 - (b.y - a.y) * 0.12;
@@ -25,10 +24,13 @@ const ease = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
 /**
  * crop: how much of the page's left edge the video leaves out (the nav sidebar by default).
  * viewport, scale: the browser window size and pixel ratio (a shorter window for wide formats).
+ * slow: plays the page and the script this many times slower than real time, and the build
+ * speeds it back up. The screencast only manages ~20 frames a second at large sizes, so a
+ * slowed take gets several times as many frames of every scroll and slide.
  * ready: waits until the page is ready to film; the video starts the moment it returns, so a
  * flow can start as soon as content appears and catch its entrance animations.
  */
-export async function record({ name, url, script, outDir, crop = { x: 184 }, ready, viewport, scale }) {
+export async function record({ name, url, script, outDir, crop = { x: 184 }, ready, viewport, scale, slow = 1 }) {
   const VIEWPORT = viewport ?? DEFAULT_VIEWPORT;
   const SCALE = scale ?? DEFAULT_SCALE;
   const frameDir = join(outDir, "frames");
@@ -38,6 +40,24 @@ export async function record({ name, url, script, outDir, crop = { x: 184 }, rea
   const browser = await chromium.launch({ executablePath: CHROME, args: [`--force-device-scale-factor=${SCALE}`] });
   const context = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor: SCALE });
   const page = await context.newPage();
+  // Script waits, mouse pacing and the page's clocks all stretch by `slow`.
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms * slow));
+  if (slow !== 1) {
+    await page.addInitScript((n) => {
+      const pn = performance.now.bind(performance);
+      const p0 = pn();
+      performance.now = () => p0 + (pn() - p0) / n;
+      const dn = Date.now;
+      const d0 = dn();
+      Date.now = () => d0 + (dn() - d0) / n;
+      const raf = window.requestAnimationFrame.bind(window);
+      window.requestAnimationFrame = (cb) => raf((t) => cb(p0 + (t - p0) / n));
+      const st = window.setTimeout.bind(window);
+      window.setTimeout = (fn, ms, ...a) => st(fn, (ms ?? 0) * n, ...a);
+      const si = window.setInterval.bind(window);
+      window.setInterval = (fn, ms, ...a) => si(fn, (ms ?? 0) * n, ...a);
+    }, slow);
+  }
   await page.addInitScript(() => {
     document.addEventListener("DOMContentLoaded", () => {
       // No text caret: the video draws its own cursor.
@@ -85,8 +105,10 @@ export async function record({ name, url, script, outDir, crop = { x: 184 }, rea
     await ready(page);
   } else {
     await page.goto(url, { waitUntil: "networkidle" });
-    await page.waitForTimeout(900);
+    await sleep(900);
   }
+  // CSS transitions and animations run on the document timeline, outside the page's JS clocks.
+  if (slow !== 1) await cdp.send("Animation.setPlaybackRate", { playbackRate: 1 / slow });
   log("start", { cursor: mouse });
 
   const box = async (target) => {
@@ -158,7 +180,7 @@ export async function record({ name, url, script, outDir, crop = { x: 184 }, rea
     for (let i = 1; i <= steps; i++) {
       const p = arc(from, to, ease(i / steps));
       await page.mouse.move(p.x, p.y);
-      await sleep(moveStart * 1000 + (travel * i) / steps - Date.now());
+      await sleep(moveStart * 1000 / slow + (travel * i) / steps - Date.now() / slow);
     }
     let moveEnd = now();
     await sleep(pause);
@@ -218,7 +240,7 @@ export async function record({ name, url, script, outDir, crop = { x: 184 }, rea
 
   await writeFile(
     join(outDir, "recording.json"),
-    JSON.stringify({ name, viewport: VIEWPORT, crop, scale: SCALE, frames, events }, null, 1),
+    JSON.stringify({ name, viewport: VIEWPORT, crop, scale: SCALE, slow, frames, events }, null, 1),
   );
   console.log(`${name}: ${frames.length} frames, ${(events.at(-1).t - events[0].t).toFixed(1)}s`);
 }
