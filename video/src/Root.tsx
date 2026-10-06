@@ -26,10 +26,10 @@ export function Root() {
         />
       ))}
       {/* The 20-second launch film cut from the launch-a and launch-b takes. */}
-      {(["square", "wide"] as const).map((format) => (
+      {(["square", "wide", "frame"] as const).map((format) => (
         <Composition
           key={format}
-          id={format === "square" ? "launch" : "launch-wide"}
+          id={format === "square" ? "launch" : format === "wide" ? "launch-wide" : "launch-frame"}
           component={Launch}
           width={LAYOUTS[format].width}
           height={LAYOUTS[format].height}

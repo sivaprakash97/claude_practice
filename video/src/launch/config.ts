@@ -55,7 +55,7 @@ export type Layout = {
  */
 export const SCRIM = "rgba(0,22,14,0.75)";
 
-export const LAYOUTS: Record<"square" | "wide", Layout> = {
+export const LAYOUTS: Record<"square" | "wide" | "frame", Layout> = {
   square: {
     width: 1080,
     height: 1080,
@@ -71,6 +71,16 @@ export const LAYOUTS: Record<"square" | "wide", Layout> = {
     stage: { x: 740, y: (1080 - stageHeight(1120)) / 2, width: 1120, height: stageHeight(1120), radius: 22 },
     headline: { left: 100, top: 436, width: 580, title: 72, line: 28 },
     hook: { eyebrowTop: 420, promptTop: 498, heading: 44, mark: 54, prompt: 66 },
+    lockup: { mark: 112, word: 110, beats: 40 },
+    scrim: SCRIM,
+  },
+  // 1700×1056: the 850×528 portfolio frame at 2x, with a wider product screen.
+  frame: {
+    width: 1700,
+    height: 1056,
+    stage: { x: 480, y: (1056 - stageHeight(1180)) / 2, width: 1180, height: stageHeight(1180), radius: 22 },
+    headline: { left: 72, top: 420, width: 380, title: 60, line: 25 },
+    hook: { eyebrowTop: 408, promptTop: 486, heading: 44, mark: 54, prompt: 66 },
     lockup: { mark: 112, word: 110, beats: 40 },
     scrim: SCRIM,
   },
