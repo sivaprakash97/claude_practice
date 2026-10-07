@@ -135,7 +135,8 @@ const request = {
     const drawer = page.getByRole("dialog");
     caption("Open your latest request");
     await wait(700);
-    await click(page.getByRole("row", { name: /SUR# 1029/ }), { zoom: 1.7, hold: 0.4, travel: 700, at: [0.2, 0.5], out: true });
+    // Stays wide: the click and the panel sliding in read best as a whole.
+    await click(page.getByRole("row", { name: /SUR# 1029/ }), { zoom: false, travel: 700, at: [0.2, 0.5] });
     // The panel slides in from the right.
     await wait(1000);
 

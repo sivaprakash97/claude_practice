@@ -30,9 +30,9 @@
    },
    "moveStart": 0.9279999732971191,
    "moveEnd": 2.316999912261963,
-   "zoom": 1.7,
+   "zoom": false,
    "hold": 0.4,
-   "out": true
+   "out": false
   },
   {
    "kind": "caption",
