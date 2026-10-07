@@ -10,6 +10,7 @@ on each click, and the videos add a smooth cursor, click ripples and captions.
 | 1 | `research` | Ask Fluxby for a tool, answer its questions, get Runway recommended |
 | 2 | `access` | Get access to Runway and pick the teammates who need a seat |
 | 3 | `more-seats` | Only 5 seats left: Fluxby's approval process, then assign 5 now and request 5 more |
+| 4 | `request` | Open the latest request from the home screen: the panel slides in, scroll its approval progress, then its details |
 
 ### Launch film
 

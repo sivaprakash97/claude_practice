@@ -129,13 +129,45 @@ const moreSeats = {
   },
 };
 
+const request = {
+  path: "/?start=requests",
+  async script({ page, click, focus, scrollTo, wait, caption }) {
+    const drawer = page.getByRole("dialog");
+    caption("Open your latest request");
+    await wait(700);
+    await click(page.getByRole("row", { name: /SUR# 1029/ }), { zoom: 1.7, hold: 0.4, travel: 700, at: [0.2, 0.5], out: true });
+    // The panel slides in from the right.
+    await wait(1000);
+
+    caption("Follow its approval, step by step");
+    await focus(drawer.getByText("Procurement Approval"), { zoom: 1.45, hold: 2.6, at: [0.5, 1.5] });
+    await wait(900);
+    await scrollTo(drawer.getByText("Implementation"), { block: "end", offset: 40, ms: 1400 });
+    await wait(900);
+
+    caption("Check the request details");
+    await click(drawer.getByRole("button", { name: "Details", exact: true }), { zoom: 1.7, hold: 0.5, travel: 600 });
+    await wait(900);
+    await focus(drawer.getByText("Tool details"), { zoom: 1.45, hold: 2.8, at: [0.5, 2] });
+    await wait(700);
+    await scrollTo(drawer.getByText("Pre-assign seats to"), { block: "start", offset: -20, ms: 1500 });
+    await wait(2200);
+  },
+};
+
 // The same flows in a wider, shorter browser window for the 1700×1056 portfolio frame
 // (src/Walkthrough.tsx FLOW_LAYOUTS.frame): 1631×760 fills its 1588×834 screen exactly once
 // the sidebar is cropped. Recorded at 2× so the larger on-screen page stays sharp when zoomed.
 // Played 6× slower while recording (see `slow` in recorder.mjs) so scrolls and slides stay smooth.
 const framed = (flow) => ({ ...flow, viewport: { width: 1631, height: 760 }, scale: 2, slow: 6 });
 
-export const FLOWS = { research, access, "more-seats": moreSeats, "research-frame": framed(research),
+export const FLOWS = {
+  research,
+  access,
+  "more-seats": moreSeats,
+  "research-frame": framed(research),
   "access-frame": framed(access),
   "more-seats-frame": framed(moreSeats),
+  request,
+  "request-frame": framed(request),
 };

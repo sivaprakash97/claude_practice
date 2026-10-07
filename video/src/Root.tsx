@@ -1,9 +1,11 @@
 import { Composition } from "remotion";
 import access from "./timelines/access.json";
 import moreSeats from "./timelines/more-seats.json";
+import request from "./timelines/request.json";
 import research from "./timelines/research.json";
 import accessFrame from "./timelines/access-frame.json";
 import moreSeatsFrame from "./timelines/more-seats-frame.json";
+import requestFrame from "./timelines/request-frame.json";
 import researchFrame from "./timelines/research-frame.json";
 import type { Timeline } from "./timeline";
 import { FLOW_LAYOUTS, Walkthrough } from "./Walkthrough";
@@ -11,7 +13,7 @@ import { DURATION, FPS, LAYOUTS } from "./launch/config";
 import { Launch } from "./launch/Launch";
 
 // One square video per flow. Re-run the capture and build scripts to refresh a timeline.
-const TIMELINES = [research, access, moreSeats] as Timeline[];
+const TIMELINES = [research, access, moreSeats, request] as Timeline[];
 
 export function Root() {
   return (
@@ -29,7 +31,7 @@ export function Root() {
         />
       ))}
       {/* Flows recorded in the frame format's shorter browser window (scripts/flows.mjs `framed`). */}
-      {([researchFrame, accessFrame, moreSeatsFrame] as Timeline[]).map((timeline) => (
+      {([researchFrame, accessFrame, moreSeatsFrame, requestFrame] as Timeline[]).map((timeline) => (
         <Composition
           key={timeline.name}
           id={timeline.name}
