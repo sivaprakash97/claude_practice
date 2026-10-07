@@ -139,7 +139,7 @@ const moreSeats = {
     caption("Pre-assign the extra seats");
     await click(preassign, { zoom: false, travel: 600 });
     await wait(300);
-    for (const name of ["Jordan Taylor", "Samantha Lee", "Carlos Mendoza", "Tara Brooks", "Ethan Carter"])
+    for (const name of ["Jordan Taylor", "Samantha Lee", "Carlos Mendoza"])
       await click(member(name), { zoom: false, travel: 350, pause: 120 });
     await wait(400);
     speed(2);
