@@ -16,20 +16,47 @@ loadFont({ family: "Manrope", url: manropeUrl, weight: "200 800" });
 
 export const SIZE = 1080;
 
-// The browser window on the canvas.
-const WINDOW_WIDTH = 1000;
 const BAR = 36;
-const WINDOW_TOP = 64;
 const RADIUS = 14;
 const URL = "claude-practice-one.vercel.app";
-const CAPTION_SPACE = 130; // Height the caption takes up at the bottom of the frame.
+
+// Where each format puts the browser window and the captions.
+export type FlowLayout = {
+  width: number;
+  height: number;
+  window: { top: number; width: number };
+  /** Height kept clear under the window for the caption pill. */
+  captionSpace: number;
+  /** Show the URL pill in the window's title bar. */
+  url?: boolean;
+  /** Scales how far each click zooms in (1 keeps the flow's own zoom levels). */
+  zoomFactor?: number;
+};
+
+export const FLOW_LAYOUTS: Record<"square" | "frame", FlowLayout> = {
+  square: { width: SIZE, height: SIZE, window: { top: 64, width: 1000 }, captionSpace: 130, url: true },
+  // 1700×1056: the 850×528 portfolio frame at 2x. The window fills the width with a 56px
+  // margin on the sides and top, and the caption sits under it as in the square videos. The
+  // flows are recorded in a shorter browser window for it (scripts/flows.mjs `framed`), and
+  // since the page is already larger on screen, clicks zoom in about half as far.
+  frame: {
+    width: 1700,
+    height: 1056,
+    window: { top: 56, width: 1700 - 2 * 56 },
+    captionSpace: 130,
+    zoomFactor: 0.45,
+  },
+};
 
 // Green marbled backdrop (public/background.jpg); the window and captions stay clean and neutral.
 const BACKGROUND = "background.jpg";
 const INK = "#1d1d20";
 
-export function Walkthrough({ timeline }: { timeline: Timeline }) {
+export function Walkthrough({ timeline, layout = FLOW_LAYOUTS.square }: { timeline: Timeline; layout?: FlowLayout }) {
   const frame = useCurrentFrame();
+  const { width: W, height: H } = layout;
+  const WINDOW_WIDTH = layout.window.width;
+  const { captionSpace } = layout;
   const { fps } = useVideoConfig();
   const t = frame / fps;
 
@@ -39,28 +66,33 @@ export function Walkthrough({ timeline }: { timeline: Timeline }) {
   const k = WINDOW_WIDTH / (timeline.viewport.width - cropX);
   const screenHeight = timeline.viewport.height * k;
   const win = {
-    left: (SIZE - WINDOW_WIDTH) / 2,
-    top: WINDOW_TOP,
+    left: (W - WINDOW_WIDTH) / 2,
+    top: layout.window.top,
     width: WINDOW_WIDTH,
     height: BAR + screenHeight,
   };
+  const zoomFactor = layout.zoomFactor ?? 1;
   const toCanvas = (p: Point): Point => ({ x: win.left + (p.x - cropX) * k, y: win.top + BAR + p.y * k });
 
   const { keys, clicks } = useMemo(() => {
-    const wide: Camera = { scale: 1, x: SIZE / 2, y: SIZE / 2 };
+    const wide: Camera = { scale: 1, x: W / 2, y: H / 2 };
     // A zoomed view stays within the window, except that it can rise far enough for the
     // bottom of the window to clear the caption.
     const clampView = (c: Camera): Camera => {
-      const half = SIZE / 2 / c.scale;
-      const fit = (v: number, lo: number, hi: number) => (hi - lo < 2 * half ? (lo + hi) / 2 : Math.min(hi - half, Math.max(lo + half, v)));
+      const fit = (v: number, lo: number, hi: number, half: number) =>
+        hi - lo < 2 * half ? (lo + hi) / 2 : Math.min(hi - half, Math.max(lo + half, v));
       return {
         scale: c.scale,
-        x: fit(c.x, win.left, win.left + win.width),
-        y: fit(c.y, win.top, win.top + win.height + CAPTION_SPACE / c.scale),
+        x: fit(c.x, win.left, win.left + win.width, W / 2 / c.scale),
+        y: fit(c.y, win.top, win.top + win.height + captionSpace / c.scale, H / 2 / c.scale),
       };
     };
+    const scaleZoom = (z: number) => 1 + (z - 1) * zoomFactor;
+    const events = timeline.events.map((e) =>
+      e.kind === "focus" || (e.kind === "click" && e.zoom !== false) ? { ...e, zoom: scaleZoom(e.zoom as number) } : e,
+    );
     return {
-      keys: cameraKeys(timeline.events, wide, toCanvas, clampView),
+      keys: cameraKeys(events, wide, toCanvas, clampView),
       clicks: timeline.events.filter((e): e is ClickEvent => e.kind === "click"),
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -82,7 +114,7 @@ export function Walkthrough({ timeline }: { timeline: Timeline }) {
       <AbsoluteFill
         style={{
           transformOrigin: "0 0",
-          transform: `translate(${SIZE / 2}px, ${SIZE / 2}px) scale(${cam.scale}) translate(${-cam.x}px, ${-cam.y}px)`,
+          transform: `translate(${W / 2}px, ${H / 2}px) scale(${cam.scale}) translate(${-cam.x}px, ${-cam.y}px)`,
         }}
       >
         <div
@@ -100,7 +132,7 @@ export function Walkthrough({ timeline }: { timeline: Timeline }) {
             transform: `translateY(${(1 - intro) * 24}px) scale(${0.97 + 0.03 * intro})`,
           }}
         >
-          <WindowBar />
+          <WindowBar url={layout.url ?? false} />
           <OffthreadVideo
             src={staticFile(`${timeline.name}/screen.mp4`)}
             muted
@@ -143,7 +175,7 @@ export function Backdrop({ progress }: { progress: number }) {
   );
 }
 
-function WindowBar() {
+function WindowBar({ url }: { url: boolean }) {
   return (
     <div
       style={{
@@ -162,7 +194,7 @@ function WindowBar() {
           <span key={i} style={{ width: 11, height: 11, borderRadius: 99, background: "#dcdcdf" }} />
         ))}
       </div>
-      <div
+      {url && <div
         style={{
           position: "absolute",
           left: "50%",
@@ -181,7 +213,7 @@ function WindowBar() {
         }}
       >
         {URL}
-      </div>
+      </div>}
     </div>
   );
 }
