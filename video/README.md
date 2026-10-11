@@ -17,10 +17,10 @@ on each click, and the videos add a smooth cursor, click ripples and captions.
 `launch` (1080×1080), `launch-wide` (1920×1080) and `launch-frame` (1700×1056, the 850×528 portfolio frame at 2x) are the same 20-second edited film of the
 whole story, cut from two takes recorded for it (`launch-a`: home screen → license log,
 `launch-b`: seat upgrade request → submitted). The wide version puts the act headlines in a
-column beside the product instead of above it. The frame version (about 26s) uses the flows' frame layout
+column beside the product instead of above it. The frame version (about 29s) uses the flows' frame layout
 (a full-width window with even margins) and opens each of the three flows with a centered
-title card, with the product stepping aside for each card. It opens on the real home screen
-rather than the type landing on it, and cuts from its own takes, `launch-a-frame` and
+title card, with the product stepping aside for each card. It opens with the typed prompt on the
+backdrop, which fades for the first card rather than landing on the UI, and cuts from its own takes, `launch-a-frame` and
 `launch-b-frame`, recorded at the flows' 1631×760 size in slow motion. `LAYOUTS` in `src/launch/config.ts` holds each format's placement, and each
 format's edit (takes, page size and camera).
 

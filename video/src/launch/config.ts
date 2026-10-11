@@ -104,6 +104,8 @@ export type Edit = {
   /** Opening type that lands on the real home screen, for edits that open on it. */
   hook?: typeof HOOK_TYPE & { /** Frame of take A shown while the stage rises: the empty home screen. */ freezeAt: number };
   hookCamera?: CameraState;
+  /** The same opening type on the backdrop alone, fading out at `end` instead of landing. */
+  intro?: typeof HOOK_TYPE & { end: number };
   /**
    * Title cards that break the film into its flows: the stage steps aside for each card and
    * comes back for the flow, over `shots`.
@@ -214,15 +216,18 @@ const PAGE_EDIT = makeEdit({ A: takeA as Timeline, B: takeB as Timeline }, page(
 // 1631×760 takes for the frame format. The film is three flows, each opened by a title card
 // in the middle of the screen; the stage steps aside for each card. The whole cropped page
 // fits the wide window, so the camera holds still. The film opens on its first card and then
-// the real home screen (no type landing on the UI).
+// the real home screen (the opening type fades rather than landing on the UI).
 const FRAME_PAGE = page(1631, 760, 760);
 /** How long a title card holds the screen on its own. */
 const CARD = 1.8;
+/** The typed prompt holds a moment after typing, then fades for the first card. */
+const INTRO_END = 2.45;
 const FRAME_EDIT = makeEdit({ A: takeAFrame as Timeline, B: takeBFrame as Timeline }, FRAME_PAGE, ({ cut, mark, click }) => {
   const scenes: Scene[] = [];
   const cards: Act[] = [];
   const shots: { start: number; end: number }[] = [];
-  let t = 0;
+  // Opens on the typed prompt alone, then the first card.
+  let t = INTRO_END;
   /** A title card, then a shot of consecutive scenes, each [id, take, from, to, film length]. */
   const flow = (copy: { title: string; line: string }, parts: [string, TakeId, number, number, number][]) => {
     cards.push({ ...copy, start: t, end: t + CARD });
@@ -261,6 +266,7 @@ const FRAME_EDIT = makeEdit({ A: takeAFrame as Timeline, B: takeBFrame as Timeli
     closeStart,
     cursor: { in: 0, out: submit.end + 0.35 },
     acts: [],
+    intro: { ...HOOK_TYPE, end: INTRO_END },
     cards,
     shots,
     camera: [cut((1631 + 184) / 2, 380, 1, 0)],

@@ -197,16 +197,19 @@ function Pointer({ t, edit, counter }: { t: number; edit: Edit; counter: number 
 // ── Hook: large type that lands on the real UI ──────────────────────────────
 
 function Hook({ t, layout }: { t: number; layout: Layout }) {
-  const HOOK = layout.edit.hook;
-  const hookCamera = layout.edit.hookCamera;
-  if (!HOOK || !hookCamera || t > HOOK_END + 0.15) return null;
-  const land = view(hookCamera, layout);
+  const { intro, hookCamera } = layout.edit;
+  const HOOK = layout.edit.hook ?? intro;
+  if (!HOOK || t > (intro ? intro.end : HOOK_END + 0.15)) return null;
+  // Without a camera to land on, the type stays on the backdrop and fades out.
+  const land = view(hookCamera ?? { x: 0, y: 0, zoom: 1 }, layout);
   const { hook } = layout;
   const center = layout.width / 2;
-  const m = progress(t, HOOK.morphStart, HOOK.morphEnd - HOOK.morphStart, EASE.inOut);
+  const m = hookCamera ? progress(t, HOOK.morphStart, HOOK.morphEnd - HOOK.morphStart, EASE.inOut) : 0;
   // Colour turns from white to the UI's ink only once the stage is behind the type.
   const ink = Math.pow(m, 2.2);
-  const fadeOut = 1 - progress(t, HOOK_END - 0.02, 0.12, EASE.out);
+  const fadeOut = intro
+    ? 1 - progress(t, intro.end - 0.4, 0.4, EASE.in)
+    : 1 - progress(t, HOOK_END - 0.02, 0.12, EASE.out);
 
   // Eyebrow: Fluxby mark + "Ask Fluxby AI anything" → the home screen's heading.
   const eyebrowIn = progress(t, HOOK.eyebrowIn, 0.6, EASE.out);
