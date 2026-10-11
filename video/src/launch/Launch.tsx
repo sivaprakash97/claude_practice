@@ -1,15 +1,11 @@
-// The 20-second launch film. Layers, back to front: backdrop, act headlines, the product
+// The launch film. Layers, back to front: backdrop, act headlines or title cards, the product
 // stage (recorded takes behind a designed camera, with cursor and click ripples), the
-// opening type that lands on the product, and the closing lockup.
+// opening type that lands on the product (formats that open on it), and the closing lockup.
 import { AbsoluteFill, Freeze, Img, OffthreadVideo, Sequence, staticFile, useCurrentFrame } from "remotion";
 import { cursorAt, type ClickEvent, type Point } from "../timeline";
 import { Backdrop, Cursor, Ripple, WindowBar } from "../Walkthrough";
 import {
-  ACTS,
   CLOSE,
-  CLOSE_START,
-  CURSOR,
-  DURATION,
   FPS,
   HOOK_END,
   baseScale,
@@ -47,17 +43,16 @@ export function Launch({ layout }: { layout: Layout }) {
 
   return (
     <AbsoluteFill style={{ background: "#0b6b45", fontFamily: FONT }}>
-      <Backdrop progress={t / DURATION} />
+      <Backdrop progress={t / layout.edit.duration} />
       {/* Darken the marble so all white type clears WCAG AAA (7:1); see SCRIM. */}
       <AbsoluteFill style={{ background: layout.scrim }} />
 
-      {ACTS.map((act) =>
-        layout.caption ? (
-          <Caption key={act.title} act={act} t={t} layout={layout} />
-        ) : (
-          <Headline key={act.title} act={act} t={t} layout={layout} />
-        ),
-      )}
+      {layout.edit.acts.map((act) => (
+        <Headline key={act.title} act={act} t={t} layout={layout} />
+      ))}
+      {layout.edit.cards?.map((card) => (
+        <TitleCard key={card.title} card={card} t={t} layout={layout} />
+      ))}
 
       <Stage t={t} v={v} layout={layout} />
       <Hook t={t} layout={layout} />
@@ -70,14 +65,27 @@ export function Launch({ layout }: { layout: Layout }) {
 
 function Stage({ t, v, layout }: { t: number; v: ReturnType<typeof view>; layout: Layout }) {
   const { stage, edit } = layout;
-  const { hook: HOOK, page } = edit;
+  const { hook, page } = edit;
   const bar = layout.windowBar ? WINDOW_BAR : 0;
-  if (t < HOOK.stageIn || t > CLOSE_START + 0.45) return null;
-  const enter = progress(t, HOOK.stageIn, HOOK.stageInDuration, EASE.out);
-  const exit = progress(t, CLOSE_START, 0.42, EASE.inOut);
-  const opacity = clamp01(enter * 1.8) * (1 - exit);
-  const y = (1 - enter) * 90 + exit * 18;
-  const scale = mix(0.93, 1, enter) * mix(1, 0.9, exit);
+  let opacity: number, y: number, scale: number;
+  if (edit.shots) {
+    // Between title cards: each shot fades in, rising a little, and fades out.
+    const shot = edit.shots.find((sh) => t >= sh.start && t < sh.end);
+    if (!shot) return null;
+    const enter = progress(t, shot.start, 0.5, EASE.out);
+    const exit = progress(t, shot.end - 0.4, 0.4, EASE.inOut);
+    opacity = enter * (1 - exit);
+    y = (1 - enter) * 40 - exit * 12;
+    scale = mix(0.97, 1, enter) * mix(1, 0.97, exit);
+  } else {
+    const stageIn = hook?.stageIn ?? 0;
+    if (t < stageIn || t > edit.closeStart + 0.45) return null;
+    const enter = hook ? progress(t, stageIn, hook.stageInDuration, EASE.out) : 1;
+    const exit = progress(t, edit.closeStart, 0.42, EASE.inOut);
+    opacity = clamp01(enter * 1.8) * (1 - exit);
+    y = (1 - enter) * 90 + exit * 18;
+    scale = mix(0.93, 1, enter) * mix(1, 0.9, exit);
+  }
 
   return (
     <div
@@ -109,7 +117,7 @@ function Stage({ t, v, layout }: { t: number; v: ReturnType<typeof view>; layout
           }}
         >
           <Footage edit={edit} />
-          {t < HOOK_END && <HookMasks />}
+          {hook && t < HOOK_END && <HookMasks />}
           <Pointer t={t} edit={edit} counter={Math.pow(v.scale, -0.45)} />
         </div>
       </div>
@@ -120,17 +128,19 @@ function Stage({ t, v, layout }: { t: number; v: ReturnType<typeof view>; layout
 const WINDOW_BAR = 36;
 
 function Footage({ edit }: { edit: Edit }) {
-  const { takes, scenes: SCENES, hook: HOOK, page } = edit;
+  const { takes, scenes: SCENES, hook, page } = edit;
   const video = (take: "A" | "B") => staticFile(`${takes[take].name}/screen.mp4`);
   const pageVideoStyle = { position: "absolute", left: 0, top: 0, width: page.width, height: page.height } as const;
   return (
     <>
       {/* While the stage rises: the empty home screen, held. */}
-      <Sequence from={0} durationInFrames={Math.round(HOOK_END * FPS)} layout="none">
-        <Freeze frame={Math.round(HOOK.freezeAt * FPS)}>
-          <OffthreadVideo src={video("A")} muted style={pageVideoStyle} />
-        </Freeze>
-      </Sequence>
+      {hook && (
+        <Sequence from={0} durationInFrames={Math.round(HOOK_END * FPS)} layout="none">
+          <Freeze frame={Math.round(hook.freezeAt * FPS)}>
+            <OffthreadVideo src={video("A")} muted style={pageVideoStyle} />
+          </Freeze>
+        </Sequence>
+      )}
       {SCENES.map((s) => (
         <Sequence
           key={s.id}
@@ -164,7 +174,8 @@ function HookMasks() {
 function Pointer({ t, edit, counter }: { t: number; edit: Edit; counter: number }) {
   const s = edit.scenes.find((sc) => t >= sc.start && t < sc.end);
   if (!s) return null;
-  const opacity = progress(t, CURSOR.in, 0.25, EASE.out) * (1 - progress(t, CURSOR.out, 0.3, EASE.in));
+  const { cursor } = edit;
+  const opacity = progress(t, cursor.in, 0.25, EASE.out) * (1 - progress(t, cursor.out, 0.3, EASE.in));
   if (opacity <= 0) return null;
   const take = edit.takes[s.take];
   const rate = sceneRate(s);
@@ -186,9 +197,10 @@ function Pointer({ t, edit, counter }: { t: number; edit: Edit; counter: number 
 // ── Hook: large type that lands on the real UI ──────────────────────────────
 
 function Hook({ t, layout }: { t: number; layout: Layout }) {
-  if (t > HOOK_END + 0.15) return null;
   const HOOK = layout.edit.hook;
-  const land = view(layout.edit.hookCamera, layout);
+  const hookCamera = layout.edit.hookCamera;
+  if (!HOOK || !hookCamera || t > HOOK_END + 0.15) return null;
+  const land = view(hookCamera, layout);
   const { hook } = layout;
   const center = layout.width / 2;
   const m = progress(t, HOOK.morphStart, HOOK.morphEnd - HOOK.morphStart, EASE.inOut);
@@ -339,42 +351,67 @@ function Headline({ act, t, layout }: { act: Act; t: number; layout: Layout }) {
   );
 }
 
-/** The act as one caption pill under the window, styled like the flows' captions. */
-function Caption({ act, t, layout }: { act: Act; t: number; layout: Layout }) {
-  const { caption } = layout;
-  if (!caption || t < act.start - 0.05 || t > act.end + 0.05) return null;
-  const inK = progress(t, act.start, 0.45, EASE.out);
-  const outK = progress(t, act.end - 0.32, 0.32, EASE.in);
+// ── Title cards ─────────────────────────────────────────────────────────────
+
+/** A flow's title in the middle of the screen, before the product comes back. */
+function TitleCard({ card, t, layout }: { card: Act; t: number; layout: Layout }) {
+  const size = layout.card;
+  if (!size || t < card.start || t > card.end) return null;
+  const words = card.title.split(" ");
+  const out = progress(t, card.end - 0.35, 0.35, EASE.in);
+  const line = progress(t, card.start + 0.3, 0.6, EASE.out);
   return (
-    <div
+    <AbsoluteFill
       style={{
-        position: "absolute",
-        left: "50%",
-        bottom: caption.bottom,
-        transform: `translate(-50%, ${(1 - inK) * 14 - outK * 10}px)`,
-        opacity: inK * (1 - outK),
-        whiteSpace: "nowrap",
-        padding: "14px 26px",
-        borderRadius: 999,
-        background: "rgba(255,255,255,0.94)",
-        color: "#1d1d20",
-        fontSize: caption.size,
-        fontWeight: 500,
-        letterSpacing: -0.2,
-        boxShadow: "0 10px 30px -6px rgba(20,20,30,0.18), 0 0 0 1px rgba(20,20,30,0.06)",
+        alignItems: "center",
+        justifyContent: "center",
+        color: WHITE,
+        opacity: 1 - out,
+        transform: `translateY(${-out * 16}px)`,
       }}
     >
-      <span style={{ fontWeight: 750 }}>{act.title}</span> {act.line}
-    </div>
+      <div
+        style={{
+          display: "flex",
+          gap: "0.26em",
+          fontSize: size.title,
+          fontWeight: 700,
+          letterSpacing: -size.title * 0.028,
+          lineHeight: 1.1,
+        }}
+      >
+        {words.map((w, i) => {
+          const k = progress(t, card.start + 0.05 + i * 0.08, 0.62, EASE.out);
+          return (
+            <span key={w} style={{ display: "inline-block", overflow: "hidden", paddingBottom: 8 }}>
+              <span style={{ display: "inline-block", transform: `translateY(${(1 - k) * 105}%)` }}>{w}</span>
+            </span>
+          );
+        })}
+      </div>
+      <div
+        style={{
+          marginTop: size.line * 0.6,
+          fontSize: size.line,
+          fontWeight: 500,
+          lineHeight: 1.35,
+          opacity: line,
+          transform: `translateY(${(1 - line) * 10}px)`,
+        }}
+      >
+        {card.line}
+      </div>
+    </AbsoluteFill>
   );
 }
 
 // ── Closing lockup ──────────────────────────────────────────────────────────
 
 function Lockup({ t, layout }: { t: number; layout: Layout }) {
-  if (t < CLOSE.lockupIn) return null;
+  const lockupIn = layout.edit.closeStart + 0.4;
+  if (t < lockupIn) return null;
   const { lockup } = layout;
-  const k = progress(t, CLOSE.lockupIn, 0.75, EASE.out);
+  const k = progress(t, lockupIn, 0.75, EASE.out);
   return (
     <AbsoluteFill style={{ alignItems: "center", justifyContent: "center", color: WHITE }}>
       <div
@@ -400,7 +437,7 @@ function Lockup({ t, layout }: { t: number; layout: Layout }) {
         }}
       >
         {CLOSE.beats.map((b, i) => {
-          const bk = progress(t, CLOSE.lockupIn + 0.45 + i * 0.16, 0.55, EASE.out);
+          const bk = progress(t, lockupIn + 0.45 + i * 0.16, 0.55, EASE.out);
           return (
             <span
               key={b}

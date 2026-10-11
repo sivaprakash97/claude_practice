@@ -9,7 +9,7 @@ import requestFrame from "./timelines/request-frame.json";
 import researchFrame from "./timelines/research-frame.json";
 import type { Timeline } from "./timeline";
 import { FLOW_LAYOUTS, Walkthrough } from "./Walkthrough";
-import { DURATION, FPS, LAYOUTS } from "./launch/config";
+import { FPS, LAYOUTS } from "./launch/config";
 import { Launch } from "./launch/Launch";
 
 // One square video per flow. Re-run the capture and build scripts to refresh a timeline.
@@ -52,7 +52,7 @@ export function Root() {
           width={LAYOUTS[format].width}
           height={LAYOUTS[format].height}
           fps={FPS}
-          durationInFrames={DURATION * FPS}
+          durationInFrames={Math.round(LAYOUTS[format].edit.duration * FPS)}
           defaultProps={{ layout: LAYOUTS[format] }}
         />
       ))}

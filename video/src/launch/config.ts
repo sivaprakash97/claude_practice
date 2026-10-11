@@ -85,33 +85,75 @@ const HOOK_TYPE = {
 };
 
 // ── Edits ───────────────────────────────────────────────────────────────────
-// One edit per recording size: the same scenes, cut from that size's takes, and a camera
-// designed for that page.
+// One edit per recording size: the scenes cut from that size's takes, how the film opens and
+// moves between acts, and a camera designed for that page.
+export type Act = { title: string; line: string; start: number; end: number };
 export type Edit = {
   takes: Takes;
   page: Page;
   scenes: Scene[];
   /** Film time of a moment in a scene's take. */
   filmTime: (id: string, takeTime: number) => number;
-  hook: typeof HOOK_TYPE & { /** Frame of take A shown while the stage rises: the empty home screen. */ freezeAt: number };
-  hookCamera: CameraState;
+  duration: number;
+  /** The stage leaves and the closing lockup comes in. */
+  closeStart: number;
+  /** The cursor is on screen from the first interaction to the submit. */
+  cursor: { in: number; out: number };
+  /** Act headlines (or caption pills) shown over the product. */
+  acts: Act[];
+  /** Opening type that lands on the real home screen, for edits that open on it. */
+  hook?: typeof HOOK_TYPE & { /** Frame of take A shown while the stage rises: the empty home screen. */ freezeAt: number };
+  hookCamera?: CameraState;
+  /**
+   * Title cards that break the film into its flows: the stage steps aside for each card and
+   * comes back for the flow, over `shots`.
+   */
+  cards?: Act[];
+  shots?: { start: number; end: number }[];
   camera: CameraKey[];
 };
 
-type CameraTools = {
+type Tools = {
   at: (x: number, y: number, zoom: number, t: number, move?: number, ease?: (p: number) => number) => CameraKey;
   cut: (x: number, y: number, zoom: number, t: number) => CameraKey;
   frame: (x: number, y: number, zoom: number) => CameraState;
   mark: (take: TakeId, name: string) => ReturnType<ReturnType<typeof finder>>;
   click: (take: TakeId, name: string) => ReturnType<ReturnType<typeof finder>>;
-  filmTime: (id: string, takeTime: number) => number;
+  filmTimeOf: (scenes: Scene[]) => (id: string, takeTime: number) => number;
 };
 
-function makeEdit(takes: Takes, p: Page, design: (tools: CameraTools) => { hookCamera: CameraState; camera: CameraKey[] }): Edit {
+function makeEdit(takes: Takes, p: Page, design: (tools: Tools) => Omit<Edit, "takes" | "page" | "filmTime">): Edit {
   const find = finder(takes);
   const mark = (take: TakeId, name: string) => find(take, "mark", name);
   const click = (take: TakeId, name: string) => find(take, "click", name);
+  const filmTimeOf = (scenes: Scene[]) => (id: string, takeTime: number) => {
+    const s = scenes.find((sc) => sc.id === id)!;
+    return s.start + (takeTime - s.from) / sceneRate(s);
+  };
+  // Framings are page coordinates and zoom (1 = the whole cropped page).
+  const frame = framer(p);
+  const at = (x: number, y: number, zoom: number, t: number, move = 0.7, ease = EASE.inOut): CameraKey => ({
+    ...frame(x, y, zoom),
+    t,
+    move,
+    ease,
+  });
+  const cut = (x: number, y: number, zoom: number, t: number) => at(x, y, zoom, t, 0);
+  const edit = design({ at, cut, frame, mark, click, filmTimeOf });
+  return { takes, page: p, filmTime: filmTimeOf(edit.scenes), ...edit };
+}
 
+const ACT_COPY = {
+  find: { title: "Find it.", line: "Fluxby researches the options and checks what your team already has." },
+  access: { title: "Get access.", line: "Assign open seats in a few clicks, logged automatically." },
+  approval: { title: "Get approval.", line: "Need more seats? Fluxby drafts the request for you." },
+};
+
+// 1440×1024 takes, shown in the product screen's own proportions (1040×800): the sliver of
+// page that does not fit the window (top and bottom) is left out.
+const STAGE_ASPECT = 1040 / 800;
+const stageHeight = (width: number) => width / STAGE_ASPECT;
+const PAGE_EDIT = makeEdit({ A: takeA as Timeline, B: takeB as Timeline }, page(1440, 1024, (1440 - 184) / STAGE_ASPECT), ({ at, cut, frame, mark, click, filmTimeOf }) => {
   // Only the moments that carry the story: the suggestion, the catalogue with its
   // recommendation, the seat picker and log, the drafted request and its confirmation.
   const scenes: Scene[] = [
@@ -131,36 +173,7 @@ function makeEdit(takes: Takes, p: Page, design: (tools: CameraTools) => { hookC
     scene("submit", "B", mark("B", "submitArea").t, mark("B", "modal").t - 0.1, 15.9, 16.6),
     scene("submitted", "B", mark("B", "modal").t - 0.1, mark("B", "modal").t + 1.6, 16.6, CLOSE_START + 0.6),
   ];
-  const filmTime = (id: string, takeTime: number) => {
-    const s = scenes.find((sc) => sc.id === id)!;
-    return s.start + (takeTime - s.from) / sceneRate(s);
-  };
-
-  // Framings are page coordinates and zoom (1 = the whole cropped page).
-  const frame = framer(p);
-  const at = (x: number, y: number, zoom: number, t: number, move = 0.7, ease = EASE.inOut): CameraKey => ({
-    ...frame(x, y, zoom),
-    t,
-    move,
-    ease,
-  });
-  const cut = (x: number, y: number, zoom: number, t: number) => at(x, y, zoom, t, 0);
-
-  return {
-    takes,
-    page: p,
-    scenes,
-    filmTime,
-    hook: { ...HOOK_TYPE, freezeAt: click("A", "input").t - 0.12 },
-    ...design({ at, cut, frame, mark, click, filmTime }),
-  };
-}
-
-// 1440×1024 takes, shown in the product screen's own proportions (1040×800): the sliver of
-// page that does not fit the window (top and bottom) is left out.
-const STAGE_ASPECT = 1040 / 800;
-const stageHeight = (width: number) => width / STAGE_ASPECT;
-const PAGE_EDIT = makeEdit({ A: takeA as Timeline, B: takeB as Timeline }, page(1440, 1024, (1440 - 184) / STAGE_ASPECT), ({ at, cut, frame, mark, click, filmTime }) => {
+  const filmTime = filmTimeOf(scenes);
   const hookCamera = frame(557, 301, 1.7);
   const suggestionClick = filmTime("suggest", click("A", "suggestion").t);
   const docAppears = filmTime("request", mark("B", "doc").t + 0.05);
@@ -169,6 +182,16 @@ const PAGE_EDIT = makeEdit({ A: takeA as Timeline, B: takeB as Timeline }, page(
   // the camera only leans in where the eye is meant to go, always on a clean panel edge.
   const WHOLE = { x: 812, y: 541 };
   return {
+    scenes,
+    duration: DURATION,
+    closeStart: CLOSE_START,
+    cursor: { in: HOOK_END + 0.05, out: 16.95 },
+    acts: [
+      { ...ACT_COPY.find, start: 3.05, end: 7.35 },
+      { ...ACT_COPY.access, start: 7.55, end: 12.25 },
+      { ...ACT_COPY.approval, start: 12.45, end: 17.45 },
+    ],
+    hook: { ...HOOK_TYPE, freezeAt: click("A", "input").t - 0.12 },
     hookCamera,
     camera: [
       cut(hookCamera.x, hookCamera.y, hookCamera.zoom, 0),
@@ -188,22 +211,59 @@ const PAGE_EDIT = makeEdit({ A: takeA as Timeline, B: takeB as Timeline }, page(
   };
 });
 
-// 1631×760 takes for the frame format: the whole cropped page fits the wide window, so the
-// camera mostly holds still and only leans in gently.
+// 1631×760 takes for the frame format. The film is three flows, each opened by a title card
+// in the middle of the screen; the stage steps aside for each card. The whole cropped page
+// fits the wide window, so the camera holds still. The film opens on its first card and then
+// the real home screen (no type landing on the UI).
 const FRAME_PAGE = page(1631, 760, 760);
-const FRAME_EDIT = makeEdit({ A: takeAFrame as Timeline, B: takeBFrame as Timeline }, FRAME_PAGE, ({ at, cut, frame, mark, click, filmTime }) => {
-  const hookCamera = frame(640, 230, 1.5);
-  const suggestionClick = filmTime("suggest", click("A", "suggestion").t);
-  const docAppears = filmTime("request", mark("B", "doc").t + 0.05);
-  const WHOLE = { x: (1631 + 184) / 2, y: 380 };
+/** How long a title card holds the screen on its own. */
+const CARD = 1.8;
+const FRAME_EDIT = makeEdit({ A: takeAFrame as Timeline, B: takeBFrame as Timeline }, FRAME_PAGE, ({ cut, mark, click }) => {
+  const scenes: Scene[] = [];
+  const cards: Act[] = [];
+  const shots: { start: number; end: number }[] = [];
+  let t = 0;
+  /** A title card, then a shot of consecutive scenes, each [id, take, from, to, film length]. */
+  const flow = (copy: { title: string; line: string }, parts: [string, TakeId, number, number, number][]) => {
+    cards.push({ ...copy, start: t, end: t + CARD });
+    t += CARD;
+    const start = t;
+    for (const [id, take, from, to, length] of parts) {
+      scenes.push(scene(id, take, from, to, t, t + length));
+      t += length;
+    }
+    shots.push({ start, end: t });
+  };
+  flow(ACT_COPY.find, [
+    // The real home screen: the input is clicked, the prompt fills in, a suggestion is picked.
+    ["suggest", "A", mark("A", "home").t + 0.6, click("A", "suggestion").t + 0.35, 2.6],
+    // Only the inventory steps: "Checking the inventory…", "…already uses the tool…".
+    ["thinking", "A", click("A", "submit").t + 1.02, mark("A", "results").t - 0.06, 0.6],
+    ["results", "A", mark("A", "results").t - 0.06, click("A", "getAccess").t + 0.4, 3.0],
+  ]);
+  flow(ACT_COPY.access, [
+    ["assign", "A", click("A", "getAccess").t + 0.4, click("A", "giveAccess").t + 0.12, 3.8],
+    ["assigning", "A", click("A", "giveAccess").t + 0.12, mark("A", "assigned").t, 0.6],
+    ["log", "A", mark("A", "assigned").t, mark("A", "logMembers").t + 1.4, 1.8],
+  ]);
+  flow(ACT_COPY.approval, [
+    ["ask", "B", 0.05, click("B", "proceed").t + 0.12, 1.4],
+    ["creating", "B", click("B", "proceed").t + 0.12, mark("B", "doc").t + 0.05, 0.7],
+    ["request", "B", mark("B", "doc").t + 0.05, mark("B", "submitArea").t, 1.7],
+    ["submit", "B", mark("B", "submitArea").t, mark("B", "modal").t - 0.1, 1.0],
+    ["submitted", "B", mark("B", "modal").t - 0.1, mark("B", "modal").t + 1.8, 1.8],
+  ]);
+  const closeStart = t - 0.42;
+  const submit = scenes.find((s) => s.id === "submit")!;
   return {
-    hookCamera,
-    camera: [
-      cut(hookCamera.x, hookCamera.y, hookCamera.zoom, 0),
-      at(WHOLE.x, WHOLE.y, 1.0, suggestionClick + 1.3, 1.1),
-      at(WHOLE.x, WHOLE.y, 1.0, docAppears + 1.1, 1.2),
-      at(WHOLE.x, WHOLE.y, 1.0, 17.2, 0.9),
-    ],
+    scenes,
+    duration: Math.ceil((closeStart + 2.4) * 10) / 10,
+    closeStart,
+    cursor: { in: 0, out: submit.end + 0.35 },
+    acts: [],
+    cards,
+    shots,
+    camera: [cut((1631 + 184) / 2, 380, 1, 0)],
   };
 });
 
@@ -219,8 +279,8 @@ export type Layout = {
   edit: Edit;
   /** A browser title bar drawn above the stage (the flows' window). */
   windowBar?: boolean;
-  /** Act headlines as one caption pill under the stage instead of free type. */
-  caption?: { bottom: number; size: number };
+  /** Title cards between flows (for edits that have them). */
+  card?: { title: number; line: number };
   stage: { x: number; y: number; width: number; height: number; radius: number };
   /** Act headlines: above the stage (square) or in a column beside it (wide). */
   headline: { left: number; top: number; width: number; title: number; line: number };
@@ -267,7 +327,7 @@ export const LAYOUTS: Record<"square" | "wide" | "frame", Layout> = {
     height: 1056,
     edit: FRAME_EDIT,
     windowBar: true,
-    caption: { bottom: 42, size: 27 },
+    card: { title: 96, line: 34 },
     stage: {
       x: 56,
       y: 56 + WINDOW_BAR,
@@ -286,20 +346,5 @@ export const LAYOUTS: Record<"square" | "wide" | "frame", Layout> = {
 export const baseScale = (layout: Layout) => layout.stage.width / layout.edit.page.visibleWidth;
 
 
-// ── Typography ──────────────────────────────────────────────────────────────
-export type Act = { title: string; line: string; start: number; end: number };
-export const ACTS: Act[] = [
-  {
-    title: "Find it.",
-    line: "Fluxby researches the options and checks what your team already has.",
-    start: 3.05,
-    end: 7.35,
-  },
-  { title: "Get access.", line: "Assign open seats in a few clicks, logged automatically.", start: 7.55, end: 12.25 },
-  { title: "Get approval.", line: "Need more seats? Fluxby drafts the request for you.", start: 12.45, end: 17.45 },
-];
-
-export const CLOSE = { stageOut: CLOSE_START, lockupIn: CLOSE_START + 0.4, beats: ["Find it.", "Get access.", "Get approval."] };
-
-/** The cursor is on screen from the first interaction to the submit. */
-export const CURSOR = { in: HOOK_END + 0.05, out: 16.95 };
+// ── Closing ─────────────────────────────────────────────────────────────────
+export const CLOSE = { beats: ["Find it.", "Get access.", "Get approval."] };
