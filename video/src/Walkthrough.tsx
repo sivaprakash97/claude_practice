@@ -175,7 +175,7 @@ export function Backdrop({ progress }: { progress: number }) {
   );
 }
 
-function WindowBar({ url }: { url: boolean }) {
+export function WindowBar({ url }: { url: boolean }) {
   return (
     <div
       style={{

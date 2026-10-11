@@ -3,27 +3,20 @@
 // opening type that lands on the product, and the closing lockup.
 import { AbsoluteFill, Freeze, Img, OffthreadVideo, Sequence, staticFile, useCurrentFrame } from "remotion";
 import { cursorAt, type ClickEvent, type Point } from "../timeline";
-import { Backdrop, Cursor, Ripple } from "../Walkthrough";
+import { Backdrop, Cursor, Ripple, WindowBar } from "../Walkthrough";
 import {
   ACTS,
-  CAMERA,
   CLOSE,
   CLOSE_START,
   CURSOR,
   DURATION,
   FPS,
-  HOOK,
-  HOOK_CAMERA,
   HOOK_END,
-  PAGE,
-  SCENES,
-  TAKES,
   baseScale,
-  visibleHeight,
   sceneRate,
   type Act,
+  type Edit,
   type Layout,
-  type Scene,
 } from "./config";
 import { EASE, cameraAt, clamp01, mix, mixColor, progress, type CameraState } from "./motion";
 import { FluxbyMark } from "./FluxbyMark";
@@ -34,9 +27,10 @@ const FONT = "Manrope";
 /** Page-to-stage transform for a camera framing. */
 function view(cam: CameraState, layout: Layout) {
   const { stage } = layout;
+  const { page } = layout.edit;
   const scale = baseScale(layout) * cam.zoom;
-  const left = cam.x - (PAGE.width - PAGE.cropLeft) / cam.zoom / 2;
-  const top = cam.y - visibleHeight / cam.zoom / 2;
+  const left = cam.x - page.visibleWidth / cam.zoom / 2;
+  const top = cam.y - page.visibleHeight / cam.zoom / 2;
   return {
     scale,
     left,
@@ -48,7 +42,7 @@ function view(cam: CameraState, layout: Layout) {
 export function Launch({ layout }: { layout: Layout }) {
   const frame = useCurrentFrame();
   const t = frame / FPS;
-  const cam = cameraAt(CAMERA, t);
+  const cam = cameraAt(layout.edit.camera, t);
   const v = view(cam, layout);
 
   return (
@@ -57,9 +51,13 @@ export function Launch({ layout }: { layout: Layout }) {
       {/* Darken the marble so all white type clears WCAG AAA (7:1); see SCRIM. */}
       <AbsoluteFill style={{ background: layout.scrim }} />
 
-      {ACTS.map((act) => (
-        <Headline key={act.title} act={act} t={t} layout={layout} />
-      ))}
+      {ACTS.map((act) =>
+        layout.caption ? (
+          <Caption key={act.title} act={act} t={t} layout={layout} />
+        ) : (
+          <Headline key={act.title} act={act} t={t} layout={layout} />
+        ),
+      )}
 
       <Stage t={t} v={v} layout={layout} />
       <Hook t={t} layout={layout} />
@@ -71,7 +69,9 @@ export function Launch({ layout }: { layout: Layout }) {
 // ── Stage ───────────────────────────────────────────────────────────────────
 
 function Stage({ t, v, layout }: { t: number; v: ReturnType<typeof view>; layout: Layout }) {
-  const { stage } = layout;
+  const { stage, edit } = layout;
+  const { hook: HOOK, page } = edit;
+  const bar = layout.windowBar ? WINDOW_BAR : 0;
   if (t < HOOK.stageIn || t > CLOSE_START + 0.45) return null;
   const enter = progress(t, HOOK.stageIn, HOOK.stageInDuration, EASE.out);
   const exit = progress(t, CLOSE_START, 0.42, EASE.inOut);
@@ -84,9 +84,9 @@ function Stage({ t, v, layout }: { t: number; v: ReturnType<typeof view>; layout
       style={{
         position: "absolute",
         left: stage.x,
-        top: stage.y,
+        top: stage.y - bar,
         width: stage.width,
-        height: stage.height,
+        height: stage.height + bar,
         borderRadius: stage.radius,
         overflow: "hidden",
         background: "#fafafa",
@@ -95,29 +95,34 @@ function Stage({ t, v, layout }: { t: number; v: ReturnType<typeof view>; layout
         boxShadow: "0 50px 100px -30px rgba(0,25,14,0.55), 0 18px 36px -12px rgba(0,25,14,0.35), 0 0 0 1px rgba(255,255,255,0.18)",
       }}
     >
-      <div
-        style={{
-          position: "absolute",
-          left: 0,
-          top: 0,
-          width: PAGE.width,
-          height: PAGE.height,
-          transformOrigin: "0 0",
-          transform: `translate(${-v.left * v.scale}px, ${-v.top * v.scale}px) scale(${v.scale})`,
-        }}
-      >
-        <Footage />
-        {t < HOOK_END && <HookMasks />}
-        <Pointer t={t} counter={Math.pow(v.scale, -0.45)} />
+      {bar > 0 && <WindowBar url={false} />}
+      <div style={{ position: "absolute", left: 0, top: bar, width: stage.width, height: stage.height, overflow: "hidden" }}>
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: page.width,
+            height: page.height,
+            transformOrigin: "0 0",
+            transform: `translate(${-v.left * v.scale}px, ${-v.top * v.scale}px) scale(${v.scale})`,
+          }}
+        >
+          <Footage edit={edit} />
+          {t < HOOK_END && <HookMasks />}
+          <Pointer t={t} edit={edit} counter={Math.pow(v.scale, -0.45)} />
+        </div>
       </div>
     </div>
   );
 }
 
-const video = (take: "A" | "B") => staticFile(`${TAKES[take].name}/screen.mp4`);
-const pageVideoStyle = { position: "absolute", left: 0, top: 0, width: PAGE.width, height: PAGE.height } as const;
+const WINDOW_BAR = 36;
 
-function Footage() {
+function Footage({ edit }: { edit: Edit }) {
+  const { takes, scenes: SCENES, hook: HOOK, page } = edit;
+  const video = (take: "A" | "B") => staticFile(`${takes[take].name}/screen.mp4`);
+  const pageVideoStyle = { position: "absolute", left: 0, top: 0, width: page.width, height: page.height } as const;
   return (
     <>
       {/* While the stage rises: the empty home screen, held. */}
@@ -156,16 +161,12 @@ function HookMasks() {
   );
 }
 
-function sceneAt(t: number): Scene | undefined {
-  return SCENES.find((s) => t >= s.start && t < s.end);
-}
-
-function Pointer({ t, counter }: { t: number; counter: number }) {
-  const s = sceneAt(t);
+function Pointer({ t, edit, counter }: { t: number; edit: Edit; counter: number }) {
+  const s = edit.scenes.find((sc) => t >= sc.start && t < sc.end);
   if (!s) return null;
   const opacity = progress(t, CURSOR.in, 0.25, EASE.out) * (1 - progress(t, CURSOR.out, 0.3, EASE.in));
   if (opacity <= 0) return null;
-  const take = TAKES[s.take];
+  const take = edit.takes[s.take];
   const rate = sceneRate(s);
   const tt = s.from + (t - s.start) * rate;
   const clicks = take.events.filter((e): e is ClickEvent => e.kind === "click");
@@ -186,7 +187,8 @@ function Pointer({ t, counter }: { t: number; counter: number }) {
 
 function Hook({ t, layout }: { t: number; layout: Layout }) {
   if (t > HOOK_END + 0.15) return null;
-  const land = view(HOOK_CAMERA, layout);
+  const HOOK = layout.edit.hook;
+  const land = view(layout.edit.hookCamera, layout);
   const { hook } = layout;
   const center = layout.width / 2;
   const m = progress(t, HOOK.morphStart, HOOK.morphEnd - HOOK.morphStart, EASE.inOut);
@@ -333,6 +335,36 @@ function Headline({ act, t, layout }: { act: Act; t: number; layout: Layout }) {
       >
         {act.line}
       </div>
+    </div>
+  );
+}
+
+/** The act as one caption pill under the window, styled like the flows' captions. */
+function Caption({ act, t, layout }: { act: Act; t: number; layout: Layout }) {
+  const { caption } = layout;
+  if (!caption || t < act.start - 0.05 || t > act.end + 0.05) return null;
+  const inK = progress(t, act.start, 0.45, EASE.out);
+  const outK = progress(t, act.end - 0.32, 0.32, EASE.in);
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: "50%",
+        bottom: caption.bottom,
+        transform: `translate(-50%, ${(1 - inK) * 14 - outK * 10}px)`,
+        opacity: inK * (1 - outK),
+        whiteSpace: "nowrap",
+        padding: "14px 26px",
+        borderRadius: 999,
+        background: "rgba(255,255,255,0.94)",
+        color: "#1d1d20",
+        fontSize: caption.size,
+        fontWeight: 500,
+        letterSpacing: -0.2,
+        boxShadow: "0 10px 30px -6px rgba(20,20,30,0.18), 0 0 0 1px rgba(20,20,30,0.06)",
+      }}
+    >
+      <span style={{ fontWeight: 750 }}>{act.title}</span> {act.line}
     </div>
   );
 }

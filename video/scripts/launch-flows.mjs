@@ -31,9 +31,13 @@ const launchA = {
     await click(page.getByRole("button", { name: "Submit answers" }), { travel: 450, name: "submit" });
     await wait(200);
     await mark("thinking", page.getByText("Understanding the context...").first());
-    await page.getByRole("heading", { name: "Product catalogue (4 matches)" }).waitFor({ timeout: 8000 });
+    await page.getByRole("heading", { name: "Product catalogue (4 matches)" }).waitFor({ timeout: 60000 });
     await mark("results", page.getByRole("heading", { name: "Product catalogue (4 matches)" }));
     await wait(300);
+    // A short page (the frame format) only fits the product cards whole once it is scrolled
+    // to their Get access buttons.
+    const short = page.viewportSize().height < 900;
+    if (short) await scrollTo(page.getByRole("button", { name: "Get access" }).first(), { block: "end", offset: 30, ms: 900 });
     const runway = page.getByText("Recommended", { exact: true }).locator("..");
     await mark("runway", runway);
     await mark("seatsLeft", page.getByText("5 seats left").first());
@@ -45,6 +49,12 @@ const launchA = {
     await mark("picker", page.getByPlaceholder("Search for team members").locator("../.."));
     await click(page.getByPlaceholder("Search for team members"), { travel: 450, name: "search" });
     await wait(250);
+    // On a short page, scroll once as the list opens so every pick and Give access are in view.
+    if (short) {
+      speed(1.8);
+      await scrollTo(page.locator('[class*="h-[356px]"]').first(), { block: "end", offset: 30, ms: 900 });
+      speed(1);
+    }
     const member = (name) => page.getByRole("button", { name: new RegExp(name) }).first();
     for (const [i, name] of ["Ashley Simmons", "Riley White", "Mellisa Berrera", "Nikita Skye", "Liam O"].entries())
       await click(member(name), { travel: 330, pause: 120, name: `member${i + 1}` });
@@ -74,7 +84,7 @@ const launchB = {
     await page.getByRole("button", { name: /Give access/ }).click();
     await page.getByRole("button", { name: /Yes, proceed/ }).waitFor();
     await page.locator("aside").last().getByText("Runway seats assigned to 5 members").waitFor();
-    await page.mouse.move(1100, 900);
+    await page.mouse.move(1100, page.viewportSize().height - 124);
     await page.waitForTimeout(1200);
   },
   async script({ page, click, mark, scrollTo, wait, speed }) {
@@ -86,7 +96,7 @@ const launchB = {
     await click(proceed, { travel: 600, name: "proceed" });
     await mark("creating");
     const doc = page.locator("aside").last();
-    await doc.getByText("Seat upgrade details").waitFor({ timeout: 8000 });
+    await doc.getByText("Seat upgrade details").waitFor({ timeout: 60000 });
     await mark("doc", doc);
     await mark("docTitle", doc.getByText("5 extra Runway seats").first());
     await mark("details", doc.getByText("Seat upgrade details").locator("../.."));
@@ -103,4 +113,13 @@ const launchB = {
   },
 };
 
-export const LAUNCH_FLOWS = { "launch-a": launchA, "launch-b": launchB };
+// The 1700×1056 frame format shows a wide, short page (the flows' framed size), recorded in
+// slow motion so scrolls and slides stay smooth.
+const framed = (flow) => ({ ...flow, viewport: { width: 1631, height: 760 }, scale: 2, slow: 6 });
+
+export const LAUNCH_FLOWS = {
+  "launch-a": launchA,
+  "launch-b": launchB,
+  "launch-a-frame": framed(launchA),
+  "launch-b-frame": framed(launchB),
+};
