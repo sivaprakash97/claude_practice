@@ -1,29 +1,18 @@
-// The 20-second launch film. Layers, back to front: backdrop, act headlines, the product
+// The launch film. Layers, back to front: backdrop, act headlines or title cards, the product
 // stage (recorded takes behind a designed camera, with cursor and click ripples), the
-// opening type that lands on the product, and the closing lockup.
+// opening type that lands on the product (formats that open on it), and the closing lockup.
 import { AbsoluteFill, Freeze, Img, OffthreadVideo, Sequence, staticFile, useCurrentFrame } from "remotion";
 import { cursorAt, type ClickEvent, type Point } from "../timeline";
-import { Backdrop, Cursor, Ripple } from "../Walkthrough";
+import { Backdrop, Cursor, Ripple, WindowBar } from "../Walkthrough";
 import {
-  ACTS,
-  CAMERA,
-  CLOSE,
-  CLOSE_START,
-  CURSOR,
-  DURATION,
   FPS,
-  HOOK,
-  HOOK_CAMERA,
   HOOK_END,
-  PAGE,
-  SCENES,
-  TAKES,
   baseScale,
-  visibleHeight,
   sceneRate,
   type Act,
+  type Edit,
+  type TakeId,
   type Layout,
-  type Scene,
 } from "./config";
 import { EASE, cameraAt, clamp01, mix, mixColor, progress, type CameraState } from "./motion";
 import { FluxbyMark } from "./FluxbyMark";
@@ -34,9 +23,10 @@ const FONT = "Manrope";
 /** Page-to-stage transform for a camera framing. */
 function view(cam: CameraState, layout: Layout) {
   const { stage } = layout;
+  const { page } = layout.edit;
   const scale = baseScale(layout) * cam.zoom;
-  const left = cam.x - (PAGE.width - PAGE.cropLeft) / cam.zoom / 2;
-  const top = cam.y - visibleHeight / cam.zoom / 2;
+  const left = cam.x - page.visibleWidth / cam.zoom / 2;
+  const top = cam.y - page.visibleHeight / cam.zoom / 2;
   return {
     scale,
     left,
@@ -48,17 +38,20 @@ function view(cam: CameraState, layout: Layout) {
 export function Launch({ layout }: { layout: Layout }) {
   const frame = useCurrentFrame();
   const t = frame / FPS;
-  const cam = cameraAt(CAMERA, t);
+  const cam = cameraAt(layout.edit.camera, t);
   const v = view(cam, layout);
 
   return (
     <AbsoluteFill style={{ background: "#0b6b45", fontFamily: FONT }}>
-      <Backdrop progress={t / DURATION} />
+      <Backdrop progress={t / layout.edit.duration} />
       {/* Darken the marble so all white type clears WCAG AAA (7:1); see SCRIM. */}
       <AbsoluteFill style={{ background: layout.scrim }} />
 
-      {ACTS.map((act) => (
+      {layout.edit.acts.map((act) => (
         <Headline key={act.title} act={act} t={t} layout={layout} />
+      ))}
+      {layout.edit.cards?.map((card) => (
+        <TitleCard key={card.title} card={card} t={t} layout={layout} />
       ))}
 
       <Stage t={t} v={v} layout={layout} />
@@ -71,22 +64,37 @@ export function Launch({ layout }: { layout: Layout }) {
 // ── Stage ───────────────────────────────────────────────────────────────────
 
 function Stage({ t, v, layout }: { t: number; v: ReturnType<typeof view>; layout: Layout }) {
-  const { stage } = layout;
-  if (t < HOOK.stageIn || t > CLOSE_START + 0.45) return null;
-  const enter = progress(t, HOOK.stageIn, HOOK.stageInDuration, EASE.out);
-  const exit = progress(t, CLOSE_START, 0.42, EASE.inOut);
-  const opacity = clamp01(enter * 1.8) * (1 - exit);
-  const y = (1 - enter) * 90 + exit * 18;
-  const scale = mix(0.93, 1, enter) * mix(1, 0.9, exit);
+  const { stage, edit } = layout;
+  const { hook, page } = edit;
+  const bar = layout.windowBar ? WINDOW_BAR : 0;
+  let opacity: number, y: number, scale: number;
+  if (edit.shots) {
+    // Between title cards: each shot fades in, rising a little, and fades out.
+    const shot = edit.shots.find((sh) => t >= sh.start && t < sh.end);
+    if (!shot) return null;
+    const enter = progress(t, shot.start, 0.5, EASE.out);
+    const exit = progress(t, shot.end - 0.4, 0.4, EASE.inOut);
+    opacity = enter * (1 - exit);
+    y = (1 - enter) * 40 - exit * 12;
+    scale = mix(0.97, 1, enter) * mix(1, 0.97, exit);
+  } else {
+    const stageIn = hook?.stageIn ?? 0;
+    if (t < stageIn || t > edit.closeStart + 0.45) return null;
+    const enter = hook ? progress(t, stageIn, hook.stageInDuration, EASE.out) : 1;
+    const exit = progress(t, edit.closeStart, 0.42, EASE.inOut);
+    opacity = clamp01(enter * 1.8) * (1 - exit);
+    y = (1 - enter) * 90 + exit * 18;
+    scale = mix(0.93, 1, enter) * mix(1, 0.9, exit);
+  }
 
   return (
     <div
       style={{
         position: "absolute",
         left: stage.x,
-        top: stage.y,
+        top: stage.y - bar,
         width: stage.width,
-        height: stage.height,
+        height: stage.height + bar,
         borderRadius: stage.radius,
         overflow: "hidden",
         background: "#fafafa",
@@ -95,37 +103,44 @@ function Stage({ t, v, layout }: { t: number; v: ReturnType<typeof view>; layout
         boxShadow: "0 50px 100px -30px rgba(0,25,14,0.55), 0 18px 36px -12px rgba(0,25,14,0.35), 0 0 0 1px rgba(255,255,255,0.18)",
       }}
     >
-      <div
-        style={{
-          position: "absolute",
-          left: 0,
-          top: 0,
-          width: PAGE.width,
-          height: PAGE.height,
-          transformOrigin: "0 0",
-          transform: `translate(${-v.left * v.scale}px, ${-v.top * v.scale}px) scale(${v.scale})`,
-        }}
-      >
-        <Footage />
-        {t < HOOK_END && <HookMasks />}
-        <Pointer t={t} counter={Math.pow(v.scale, -0.45)} />
+      {bar > 0 && <WindowBar url={false} />}
+      <div style={{ position: "absolute", left: 0, top: bar, width: stage.width, height: stage.height, overflow: "hidden" }}>
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            width: page.width,
+            height: page.height,
+            transformOrigin: "0 0",
+            transform: `translate(${-v.left * v.scale}px, ${-v.top * v.scale}px) scale(${v.scale})`,
+          }}
+        >
+          <Footage edit={edit} />
+          {hook && t < HOOK_END && <HookMasks />}
+          <Pointer t={t} edit={edit} counter={Math.pow(v.scale, -0.45)} />
+        </div>
       </div>
     </div>
   );
 }
 
-const video = (take: "A" | "B") => staticFile(`${TAKES[take].name}/screen.mp4`);
-const pageVideoStyle = { position: "absolute", left: 0, top: 0, width: PAGE.width, height: PAGE.height } as const;
+const WINDOW_BAR = 36;
 
-function Footage() {
+function Footage({ edit }: { edit: Edit }) {
+  const { takes, scenes: SCENES, hook, page } = edit;
+  const video = (take: TakeId) => staticFile(`${takes[take]!.name}/screen.mp4`);
+  const pageVideoStyle = { position: "absolute", left: 0, top: 0, width: page.width, height: page.height } as const;
   return (
     <>
       {/* While the stage rises: the empty home screen, held. */}
-      <Sequence from={0} durationInFrames={Math.round(HOOK_END * FPS)} layout="none">
-        <Freeze frame={Math.round(HOOK.freezeAt * FPS)}>
-          <OffthreadVideo src={video("A")} muted style={pageVideoStyle} />
-        </Freeze>
-      </Sequence>
+      {hook && (
+        <Sequence from={0} durationInFrames={Math.round(HOOK_END * FPS)} layout="none">
+          <Freeze frame={Math.round(hook.freezeAt * FPS)}>
+            <OffthreadVideo src={video("A")} muted style={pageVideoStyle} />
+          </Freeze>
+        </Sequence>
+      )}
       {SCENES.map((s) => (
         <Sequence
           key={s.id}
@@ -156,16 +171,13 @@ function HookMasks() {
   );
 }
 
-function sceneAt(t: number): Scene | undefined {
-  return SCENES.find((s) => t >= s.start && t < s.end);
-}
-
-function Pointer({ t, counter }: { t: number; counter: number }) {
-  const s = sceneAt(t);
+function Pointer({ t, edit, counter }: { t: number; edit: Edit; counter: number }) {
+  const s = edit.scenes.find((sc) => t >= sc.start && t < sc.end);
   if (!s) return null;
-  const opacity = progress(t, CURSOR.in, 0.25, EASE.out) * (1 - progress(t, CURSOR.out, 0.3, EASE.in));
+  const { cursor } = edit;
+  const opacity = progress(t, cursor.in, 0.25, EASE.out) * (1 - progress(t, cursor.out, 0.3, EASE.in));
   if (opacity <= 0) return null;
-  const take = TAKES[s.take];
+  const take = edit.takes[s.take]!;
   const rate = sceneRate(s);
   const tt = s.from + (t - s.start) * rate;
   const clicks = take.events.filter((e): e is ClickEvent => e.kind === "click");
@@ -185,14 +197,19 @@ function Pointer({ t, counter }: { t: number; counter: number }) {
 // ── Hook: large type that lands on the real UI ──────────────────────────────
 
 function Hook({ t, layout }: { t: number; layout: Layout }) {
-  if (t > HOOK_END + 0.15) return null;
-  const land = view(HOOK_CAMERA, layout);
+  const { intro, hookCamera } = layout.edit;
+  const HOOK = layout.edit.hook ?? intro;
+  if (!HOOK || t > (intro ? intro.end : HOOK_END + 0.15)) return null;
+  // Without a camera to land on, the type stays on the backdrop and fades out.
+  const land = view(hookCamera ?? { x: 0, y: 0, zoom: 1 }, layout);
   const { hook } = layout;
   const center = layout.width / 2;
-  const m = progress(t, HOOK.morphStart, HOOK.morphEnd - HOOK.morphStart, EASE.inOut);
+  const m = hookCamera ? progress(t, HOOK.morphStart, HOOK.morphEnd - HOOK.morphStart, EASE.inOut) : 0;
   // Colour turns from white to the UI's ink only once the stage is behind the type.
   const ink = Math.pow(m, 2.2);
-  const fadeOut = 1 - progress(t, HOOK_END - 0.02, 0.12, EASE.out);
+  const fadeOut = intro
+    ? 1 - progress(t, intro.end - 0.4, 0.4, EASE.in)
+    : 1 - progress(t, HOOK_END - 0.02, 0.12, EASE.out);
 
   // Eyebrow: Fluxby mark + "Ask Fluxby AI anything" → the home screen's heading.
   const eyebrowIn = progress(t, HOOK.eyebrowIn, 0.6, EASE.out);
@@ -337,12 +354,67 @@ function Headline({ act, t, layout }: { act: Act; t: number; layout: Layout }) {
   );
 }
 
+// ── Title cards ─────────────────────────────────────────────────────────────
+
+/** A flow's title in the middle of the screen, before the product comes back. */
+function TitleCard({ card, t, layout }: { card: Act; t: number; layout: Layout }) {
+  const size = layout.card;
+  if (!size || t < card.start || t > card.end) return null;
+  const words = card.title.split(" ");
+  const out = progress(t, card.end - 0.35, 0.35, EASE.in);
+  const line = progress(t, card.start + 0.3, 0.6, EASE.out);
+  return (
+    <AbsoluteFill
+      style={{
+        alignItems: "center",
+        justifyContent: "center",
+        color: WHITE,
+        opacity: 1 - out,
+        transform: `translateY(${-out * 16}px)`,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          gap: "0.26em",
+          fontSize: size.title,
+          fontWeight: 700,
+          letterSpacing: -size.title * 0.028,
+          lineHeight: 1.1,
+        }}
+      >
+        {words.map((w, i) => {
+          const k = progress(t, card.start + 0.05 + i * 0.08, 0.62, EASE.out);
+          return (
+            <span key={w} style={{ display: "inline-block", overflow: "hidden", paddingBottom: 8 }}>
+              <span style={{ display: "inline-block", transform: `translateY(${(1 - k) * 105}%)` }}>{w}</span>
+            </span>
+          );
+        })}
+      </div>
+      <div
+        style={{
+          marginTop: size.line * 0.6,
+          fontSize: size.line,
+          fontWeight: 500,
+          lineHeight: 1.35,
+          opacity: line,
+          transform: `translateY(${(1 - line) * 10}px)`,
+        }}
+      >
+        {card.line}
+      </div>
+    </AbsoluteFill>
+  );
+}
+
 // ── Closing lockup ──────────────────────────────────────────────────────────
 
 function Lockup({ t, layout }: { t: number; layout: Layout }) {
-  if (t < CLOSE.lockupIn) return null;
+  const lockupIn = layout.edit.closeStart + 0.4;
+  if (t < lockupIn) return null;
   const { lockup } = layout;
-  const k = progress(t, CLOSE.lockupIn, 0.75, EASE.out);
+  const k = progress(t, lockupIn, 0.75, EASE.out);
   return (
     <AbsoluteFill style={{ alignItems: "center", justifyContent: "center", color: WHITE }}>
       <div
@@ -367,8 +439,8 @@ function Lockup({ t, layout }: { t: number; layout: Layout }) {
           transform: "translateY(-6px)",
         }}
       >
-        {CLOSE.beats.map((b, i) => {
-          const bk = progress(t, CLOSE.lockupIn + 0.45 + i * 0.16, 0.55, EASE.out);
+        {layout.edit.beats.map((b, i) => {
+          const bk = progress(t, lockupIn + 0.45 + i * 0.16, 0.55, EASE.out);
           return (
             <span
               key={b}

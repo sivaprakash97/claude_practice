@@ -1,0 +1,79 @@
+{
+ "name": "request-frame",
+ "fps": 60,
+ "durationInFrames": 731,
+ "viewport": {
+  "width": 1631,
+  "height": 760
+ },
+ "crop": {
+  "x": 184
+ },
+ "cursor": {
+  "x": 1052.1999999999998,
+  "y": 592.8000000000001
+ },
+ "events": [
+  {
+   "kind": "caption",
+   "t": 0.0001666545867919922,
+   "text": "Open your latest request"
+  },
+  {
+   "kind": "click",
+   "t": 1.6643333037694295,
+   "x": 499.8671875,
+   "y": 461.796875,
+   "from": {
+    "x": 1052.1999999999998,
+    "y": 592.8000000000001
+   },
+   "moveStart": 0.7126666307449341,
+   "moveEnd": 1.412499984105428,
+   "zoom": false,
+   "hold": 0.4,
+   "out": false
+  },
+  {
+   "kind": "caption",
+   "t": 2.736833333969116,
+   "text": "Follow its approval, step by step"
+  },
+  {
+   "kind": "focus",
+   "t": 2.7396666606267295,
+   "x": 1275.625,
+   "y": 627.375,
+   "zoom": 1.45,
+   "hold": 2.6
+  },
+  {
+   "kind": "caption",
+   "t": 5.9433333079020185,
+   "text": "Check the request details"
+  },
+  {
+   "kind": "click",
+   "t": 6.799999992052714,
+   "x": 1288.07421875,
+   "y": 372.5859375,
+   "from": {
+    "x": 499.8671875,
+    "y": 461.796875
+   },
+   "moveStart": 5.947999993960063,
+   "moveEnd": 6.547999978065491,
+   "zoom": 1.7,
+   "hold": 0.5,
+   "out": false
+  },
+  {
+   "kind": "focus",
+   "t": 7.775499979654948,
+   "x": 1180.015625,
+   "y": 448.984375,
+   "zoom": 1.45,
+   "hold": 2.8
+  }
+ ]
+}

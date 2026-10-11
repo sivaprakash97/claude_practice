@@ -16,14 +16,16 @@ for (const name of names) {
   const start = rec.events.find((e) => e.kind === "start").t;
   const end = rec.events.find((e) => e.kind === "end").t;
 
-  // Speed changes split the recording into pieces played at different rates.
+  // Speed changes split the recording into pieces played at different rates. A slowed take
+  // (see `slow` in recorder.mjs) plays every piece that many times faster again.
+  const slow = rec.slow ?? 1;
   const pieces = [];
-  let rate = 1;
+  let rate = slow;
   let from = start;
   for (const e of rec.events.filter((e) => e.kind === "speed")) {
     pieces.push({ from, to: e.t, rate });
     from = e.t;
-    rate = e.rate;
+    rate = e.rate * slow;
   }
   pieces.push({ from, to: end, rate });
   let out = 0;

@@ -1,0 +1,131 @@
+{
+ "name": "research-frame",
+ "fps": 60,
+ "durationInFrames": 899,
+ "viewport": {
+  "width": 1631,
+  "height": 760
+ },
+ "crop": {
+  "x": 184
+ },
+ "cursor": {
+  "x": 1052.1999999999998,
+  "y": 592.8000000000001
+ },
+ "events": [
+  {
+   "kind": "caption",
+   "t": 0,
+   "text": "Ask Fluxby AI to research a tool"
+  },
+  {
+   "kind": "click",
+   "t": 1.2706666390101116,
+   "x": 614.7421875,
+   "y": 177,
+   "from": {
+    "x": 1052.1999999999998,
+    "y": 592.8000000000001
+   },
+   "moveStart": 0.41849998633066815,
+   "moveEnd": 1.0184999704360962,
+   "zoom": 1.9,
+   "hold": 0.4,
+   "out": false
+  },
+  {
+   "kind": "click",
+   "t": 2.4100000063578286,
+   "x": 614.7421875,
+   "y": 309,
+   "from": {
+    "x": 614.7421875,
+    "y": 177
+   },
+   "moveStart": 1.706499973932902,
+   "moveEnd": 2.156499981880188,
+   "zoom": 1.9,
+   "hold": 0.3,
+   "out": true
+  },
+  {
+   "kind": "caption",
+   "t": 3.7851666609446206,
+   "text": "Answer a few quick questions"
+  },
+  {
+   "kind": "click",
+   "t": 5.146166642506917,
+   "x": 773,
+   "y": 353.59375,
+   "from": {
+    "x": 614.7421875,
+    "y": 309
+   },
+   "moveStart": 4.4945000012715655,
+   "moveEnd": 4.994333306948344,
+   "zoom": false,
+   "hold": 0.9,
+   "out": false
+  },
+  {
+   "kind": "click",
+   "t": 5.775166670481364,
+   "x": 1042,
+   "y": 353.59375,
+   "from": {
+    "x": 773,
+    "y": 353.59375
+   },
+   "moveStart": 5.22349997361501,
+   "moveEnd": 5.6233333349227905,
+   "zoom": false,
+   "hold": 0.9,
+   "out": false
+  },
+  {
+   "kind": "click",
+   "t": 7.565666635831197,
+   "x": 773,
+   "y": 367.09375,
+   "from": {
+    "x": 1042,
+    "y": 353.59375
+   },
+   "moveStart": 6.962166666984558,
+   "moveEnd": 7.412333329518636,
+   "zoom": false,
+   "hold": 0.9,
+   "out": false
+  },
+  {
+   "kind": "click",
+   "t": 9.0496666431427,
+   "x": 907.5,
+   "y": 555.09375,
+   "from": {
+    "x": 773,
+    "y": 367.09375
+   },
+   "moveStart": 8.347833315531412,
+   "moveEnd": 8.79799997806549,
+   "zoom": false,
+   "hold": 0.9,
+   "out": false
+  },
+  {
+   "kind": "caption",
+   "t": 10.27183332045873,
+   "text": "Get the best match for your team"
+  },
+  {
+   "kind": "focus",
+   "t": 11.479666650295258,
+   "x": 776,
+   "y": 442.6796875,
+   "zoom": 1.7,
+   "hold": 2.5
+  }
+ ]
+}

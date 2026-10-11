@@ -1,6 +1,8 @@
 # Walkthrough videos
 
-Square (1080×1080, 60fps) motion-graphic walkthroughs of the Fluxby prototype. The camera zooms in
+Square (1080×1080, 60fps) motion-graphic walkthroughs of the Fluxby prototype. Each flow also has a
+1700×1056 version (`<flow>-frame`, the 850×528 portfolio frame at 2x): the same flow recorded in a wider 1631×760 browser window, so the window fills the frame's width with even margins and the
+caption stays underneath. The camera zooms in
 on each click, and the videos add a smooth cursor, click ripples and captions.
 
 | Flow | Composition | Story |
@@ -8,14 +10,19 @@ on each click, and the videos add a smooth cursor, click ripples and captions.
 | 1 | `research` | Ask Fluxby for a tool, answer its questions, get Runway recommended |
 | 2 | `access` | Get access to Runway and pick the teammates who need a seat |
 | 3 | `more-seats` | Only 5 seats left: Fluxby's approval process, then assign 5 now and request 5 more |
+| 4 | `request` | Open the latest request from the home screen: the panel slides in, scroll its approval progress, then its details |
 
 ### Launch film
 
-`launch` (1080×1080) and `launch-wide` (1920×1080) are the same 20-second edited film of the
+`launch` (1080×1080), `launch-wide` (1920×1080) and `launch-frame` (1700×1056, the 850×528 portfolio frame at 2x) are the same 20-second edited film of the
 whole story, cut from two takes recorded for it (`launch-a`: home screen → license log,
 `launch-b`: seat upgrade request → submitted). The wide version puts the act headlines in a
-column beside the product instead of above it; `LAYOUTS` in `src/launch/config.ts` holds each
-format's placement.
+column beside the product instead of above it. The frame version (about 39s) adds a fourth flow, following the new request from its row on the home screen (take `launch-c-frame`), and uses the flows' frame layout
+(a full-width window with even margins) and opens each of its four flows with a centered
+title card, with the product stepping aside for each card. It opens with the typed prompt on the
+backdrop, which fades for the first card rather than landing on the UI, and cuts from its own takes, `launch-a-frame` and
+`launch-b-frame`, recorded at the flows' 1631×760 size in slow motion. `LAYOUTS` in `src/launch/config.ts` holds each format's placement, and each
+format's edit (takes, page size and camera).
 
 | Time | Beat |
 | --- | --- |
@@ -34,6 +41,7 @@ interpolation are in `src/launch/motion.ts`.
 npm run capture -- launch-a launch-b && npm run build -- launch-a launch-b
 npx remotion render src/index.ts launch out/launch.mp4
 npx remotion render src/index.ts launch-wide out/launch-wide.mp4
+npx remotion render src/index.ts launch-frame out/launch-frame.mp4
 ```
 
 ## How it works
