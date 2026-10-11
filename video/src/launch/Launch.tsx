@@ -5,13 +5,13 @@ import { AbsoluteFill, Freeze, Img, OffthreadVideo, Sequence, staticFile, useCur
 import { cursorAt, type ClickEvent, type Point } from "../timeline";
 import { Backdrop, Cursor, Ripple, WindowBar } from "../Walkthrough";
 import {
-  CLOSE,
   FPS,
   HOOK_END,
   baseScale,
   sceneRate,
   type Act,
   type Edit,
+  type TakeId,
   type Layout,
 } from "./config";
 import { EASE, cameraAt, clamp01, mix, mixColor, progress, type CameraState } from "./motion";
@@ -129,7 +129,7 @@ const WINDOW_BAR = 36;
 
 function Footage({ edit }: { edit: Edit }) {
   const { takes, scenes: SCENES, hook, page } = edit;
-  const video = (take: "A" | "B") => staticFile(`${takes[take].name}/screen.mp4`);
+  const video = (take: TakeId) => staticFile(`${takes[take]!.name}/screen.mp4`);
   const pageVideoStyle = { position: "absolute", left: 0, top: 0, width: page.width, height: page.height } as const;
   return (
     <>
@@ -177,7 +177,7 @@ function Pointer({ t, edit, counter }: { t: number; edit: Edit; counter: number 
   const { cursor } = edit;
   const opacity = progress(t, cursor.in, 0.25, EASE.out) * (1 - progress(t, cursor.out, 0.3, EASE.in));
   if (opacity <= 0) return null;
-  const take = edit.takes[s.take];
+  const take = edit.takes[s.take]!;
   const rate = sceneRate(s);
   const tt = s.from + (t - s.start) * rate;
   const clicks = take.events.filter((e): e is ClickEvent => e.kind === "click");
@@ -439,7 +439,7 @@ function Lockup({ t, layout }: { t: number; layout: Layout }) {
           transform: "translateY(-6px)",
         }}
       >
-        {CLOSE.beats.map((b, i) => {
+        {layout.edit.beats.map((b, i) => {
           const bk = progress(t, lockupIn + 0.45 + i * 0.16, 0.55, EASE.out);
           return (
             <span

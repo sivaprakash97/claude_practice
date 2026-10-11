@@ -6,18 +6,20 @@ import takeA from "../timelines/launch-a.json";
 import takeB from "../timelines/launch-b.json";
 import takeAFrame from "../timelines/launch-a-frame.json";
 import takeBFrame from "../timelines/launch-b-frame.json";
+import takeCFrame from "../timelines/launch-c-frame.json";
 import type { Timeline } from "../timeline";
 import { EASE, type CameraKey, type CameraState } from "./motion";
 
 export const FPS = 60;
 export const DURATION = 20;
 
-export type TakeId = "A" | "B";
-export type Takes = Record<TakeId, Timeline>;
+export type TakeId = "A" | "B" | "C";
+/** Take C (following a request) is only recorded for the frame format. */
+export type Takes = { A: Timeline; B: Timeline; C?: Timeline };
 
 type Named = { kind: string; name?: string; t: number };
 const finder = (takes: Takes) => (take: TakeId, kind: string, name: string) => {
-  const e = (takes[take].events as Named[]).find((ev) => ev.kind === kind && ev.name === name);
+  const e = (takes[take]!.events as Named[]).find((ev) => ev.kind === kind && ev.name === name);
   if (!e) throw new Error(`No ${kind} "${name}" in take ${take}`);
   return e as Named & { box?: { x: number; y: number; w: number; h: number }; moveStart?: number };
 };
@@ -99,8 +101,10 @@ export type Edit = {
   closeStart: number;
   /** The cursor is on screen from the first interaction to the submit. */
   cursor: { in: number; out: number };
-  /** Act headlines (or caption pills) shown over the product. */
+  /** Act headlines shown over the product. */
   acts: Act[];
+  /** The closing lockup's beats. */
+  beats: string[];
   /** Opening type that lands on the real home screen, for edits that open on it. */
   hook?: typeof HOOK_TYPE & { /** Frame of take A shown while the stage rises: the empty home screen. */ freezeAt: number };
   hookCamera?: CameraState;
@@ -149,6 +153,7 @@ const ACT_COPY = {
   find: { title: "Find it.", line: "Fluxby researches the options and checks what your team already has." },
   access: { title: "Get access.", line: "Assign open seats in a few clicks, logged automatically." },
   approval: { title: "Get approval.", line: "Need more seats? Fluxby drafts the request for you." },
+  track: { title: "Track it.", line: "Open a request to follow its approval, step by step." },
 };
 
 // 1440×1024 takes, shown in the product screen's own proportions (1040×800): the sliver of
@@ -188,6 +193,7 @@ const PAGE_EDIT = makeEdit({ A: takeA as Timeline, B: takeB as Timeline }, page(
     duration: DURATION,
     closeStart: CLOSE_START,
     cursor: { in: HOOK_END + 0.05, out: 16.95 },
+    beats: ["Find it.", "Get access.", "Get approval."],
     acts: [
       { ...ACT_COPY.find, start: 3.05, end: 7.35 },
       { ...ACT_COPY.access, start: 7.55, end: 12.25 },
@@ -222,7 +228,9 @@ const FRAME_PAGE = page(1631, 760, 760);
 const CARD = 1.8;
 /** The typed prompt holds a moment after typing, then fades for the first card. */
 const INTRO_END = 2.45;
-const FRAME_EDIT = makeEdit({ A: takeAFrame as Timeline, B: takeBFrame as Timeline }, FRAME_PAGE, ({ cut, mark, click }) => {
+const FRAME_TAKES = { A: takeAFrame as Timeline, B: takeBFrame as Timeline, C: takeCFrame as Timeline };
+const FRAME_EDIT = makeEdit(FRAME_TAKES, FRAME_PAGE, ({ cut, mark, click }) => {
+  const takes = FRAME_TAKES;
   const scenes: Scene[] = [];
   const cards: Act[] = [];
   const shots: { start: number; end: number }[] = [];
@@ -249,7 +257,8 @@ const FRAME_EDIT = makeEdit({ A: takeAFrame as Timeline, B: takeBFrame as Timeli
   flow(ACT_COPY.access, [
     ["assign", "A", click("A", "getAccess").t + 0.4, click("A", "giveAccess").t + 0.12, 3.8],
     ["assigning", "A", click("A", "giveAccess").t + 0.12, mark("A", "assigned").t, 0.6],
-    ["log", "A", mark("A", "assigned").t, mark("A", "logMembers").t + 1.4, 1.8],
+    // The log slides in, then holds so it can be read.
+    ["log", "A", mark("A", "assigned").t, takes.A.durationInFrames / 60 - 0.05, 3.1],
   ]);
   flow(ACT_COPY.approval, [
     ["ask", "B", 0.05, click("B", "proceed").t + 0.12, 1.4],
@@ -258,14 +267,21 @@ const FRAME_EDIT = makeEdit({ A: takeAFrame as Timeline, B: takeBFrame as Timeli
     ["submit", "B", mark("B", "submitArea").t, mark("B", "modal").t - 0.1, 1.0],
     ["submitted", "B", mark("B", "modal").t - 0.1, mark("B", "modal").t + 1.8, 1.8],
   ]);
+  flow(ACT_COPY.track, [
+    // The new request's row opens its panel, sliding in from the right.
+    ["open", "C", mark("C", "home").t + 0.6, mark("C", "panel").t, 1.8],
+    // Its approval steps, scrolled through to the last one.
+    ["progress", "C", mark("C", "panel").t, mark("C", "progress").t + 0.6, 2.4],
+    ["details", "C", mark("C", "progress").t + 0.6, mark("C", "detailsShown").t + 1.6, 3.0],
+  ]);
   const closeStart = t - 0.42;
-  const submit = scenes.find((s) => s.id === "submit")!;
   return {
     scenes,
     duration: Math.ceil((closeStart + 2.4) * 10) / 10,
     closeStart,
-    cursor: { in: 0, out: submit.end + 0.35 },
+    cursor: { in: 0, out: closeStart - 0.2 },
     acts: [],
+    beats: ["Find it.", "Get access.", "Get approval.", "Track it."],
     intro: { ...HOOK_TYPE, end: INTRO_END },
     cards,
     shots,
@@ -352,5 +368,3 @@ export const LAYOUTS: Record<"square" | "wide" | "frame", Layout> = {
 export const baseScale = (layout: Layout) => layout.stage.width / layout.edit.page.visibleWidth;
 
 
-// ── Closing ─────────────────────────────────────────────────────────────────
-export const CLOSE = { beats: ["Find it.", "Get access.", "Get approval."] };

@@ -113,6 +113,32 @@ const launchB = {
   },
 };
 
+// Take C: following the request. Home lists the new request (SUR# 1029) on top; its row
+// opens the request panel with the approval progress, then its details.
+const launchC = {
+  path: "/?start=requests",
+  async script({ page, click, mark, scrollTo, wait, speed }) {
+    const drawer = page.getByRole("dialog");
+    const row = page.getByRole("row", { name: /SUR# 1029/ });
+    await mark("home", row);
+    await wait(700);
+    await click(row, { travel: 700, at: [0.2, 0.5], name: "row" });
+    await drawer.getByText("Procurement Approval").waitFor();
+    await wait(1000);
+    await mark("panel", drawer);
+    await wait(1400);
+    speed(1.6);
+    await scrollTo(drawer.getByText("Implementation"), { block: "end", offset: 40, ms: 1400 });
+    speed(1);
+    await mark("progress", drawer.getByText("Implementation"));
+    await wait(1200);
+    await click(drawer.getByRole("button", { name: "Details", exact: true }), { travel: 600, name: "details" });
+    await wait(900);
+    await mark("detailsShown", drawer.getByText("Tool details"));
+    await wait(2200);
+  },
+};
+
 // The 1700×1056 frame format shows a wide, short page (the flows' framed size), recorded in
 // slow motion so scrolls and slides stay smooth.
 const framed = (flow) => ({ ...flow, viewport: { width: 1631, height: 760 }, scale: 2, slow: 6 });
@@ -122,4 +148,5 @@ export const LAUNCH_FLOWS = {
   "launch-b": launchB,
   "launch-a-frame": framed(launchA),
   "launch-b-frame": framed(launchB),
+  "launch-c-frame": framed(launchC),
 };
