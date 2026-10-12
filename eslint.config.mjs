@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     // The walkthrough video project has its own tooling.
     "video/**",
+    // The ORO Labs case study is its own app.
+    "case-study/**",
   ]),
 ]);
 
