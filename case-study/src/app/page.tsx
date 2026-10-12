@@ -1,7 +1,6 @@
 import Image from "next/image";
 import DemoVideo from "@/components/DemoVideo";
 import SectionNav from "@/components/SectionNav";
-import Slot from "@/components/Slot";
 
 function Eyebrow({ children }: { children: React.ReactNode }) {
   return <p className="tag">{children}</p>;
@@ -15,58 +14,6 @@ function Block({ title, children }: { title: string; children: React.ReactNode }
     </div>
   );
 }
-
-const STEPS = [
-  {
-    label: "Step 1",
-    tone: "yellow",
-    art: "Illustration: requester researching online",
-    note: (
-      <>
-        Requester does an <b>extensive research online to get the best software</b> for his team
-      </>
-    ),
-  },
-  {
-    label: "Step 2",
-    tone: "yellow",
-    art: "Illustration: requester submits a purchase request",
-    note: (
-      <>
-        After 2 days of effort, Requester picks a tool and <b>submits a purchase request</b>
-      </>
-    ),
-  },
-  {
-    label: "Step 3",
-    tone: "purple",
-    art: "Illustration: Alisha recalls the software exists",
-    note: (
-      <>
-        Alisha recalls that <b>this software already exists</b> in ACME’s inventory
-      </>
-    ),
-  },
-  {
-    label: "Step 4",
-    tone: "purple",
-    art: "Illustration: Alisha rejects the request",
-    note: (
-      <>
-        She <b>rejects the request</b>, and citing the existence of the requested software
-      </>
-    ),
-  },
-] as const;
-
-const GHOSTS: { left: string; top: string }[] = [
-  { left: "2%", top: "6%" },
-  { left: "2%", top: "34%" },
-  { left: "2%", top: "66%" },
-  { left: "65%", top: "6%" },
-  { left: "65%", top: "36%" },
-  { left: "65%", top: "68%" },
-];
 
 export default function Page() {
   return (
@@ -164,7 +111,7 @@ export default function Page() {
           <div className="persona">
             <div className="stack-16">
               <div className="portrait">
-                <Slot label="Portrait: Amar" />
+                <Image src="/img/portrait-amar.png" alt="Pencil sketch portrait of Amar" fill sizes="(max-width: 760px) 100vw, 296px" />
                 <span className="name-tape" data-tone="yellow">Amar</span>
               </div>
               <div className="stack-8" style={{ marginTop: 8 }}>
@@ -196,7 +143,7 @@ export default function Page() {
           <div className="persona">
             <div className="stack-16">
               <div className="portrait">
-                <Slot label="Portrait: Alisha" />
+                <Image src="/img/portrait-alisha.png" alt="Pencil sketch portrait of Alisha" fill sizes="(max-width: 760px) 100vw, 296px" />
                 <span className="name-tape" data-tone="purple">Alisha</span>
               </div>
               <div className="stack-8" style={{ marginTop: 8 }}>
@@ -227,23 +174,14 @@ export default function Page() {
 
         <div className="wider stack-24" style={{ alignItems: "center", marginTop: 16 }}>
           <h2 className="h2" style={{ textAlign: "center" }}>Here’s how a typical Purchase Request gets processed</h2>
-          <div className="journey" style={{ width: "100%" }}>
-            <div className="journey__steps">
-              {STEPS.map((s) => (
-                <div className="step" key={s.label}>
-                  <p className="tag">{s.label}</p>
-                  <div className="step__art"><Slot label={s.art} /></div>
-                  <p className="step__note" style={{ background: s.tone === "yellow" ? "linear-gradient(#f7f2cc,#f8f0b2)" : "linear-gradient(#f1ccf7,#edb2f8)" }}>
-                    {s.note}
-                  </p>
-                </div>
-              ))}
-            </div>
-            <div className="journey__note">
-              <p className="tag" style={{ color: "#e4ebe8" }}>NOTE</p>
-              <p className="small">This user journey that I mapped out is based on the insights from desk research and 4 user interviews</p>
-            </div>
-          </div>
+          <Image
+            className="panel-img"
+            src="/img/journey.jpg"
+            width={2120}
+            height={1160}
+            sizes="(max-width: 1100px) 100vw, 1060px"
+            alt="Four-step journey. Step 1: Requester does extensive research online to get the best software for his team. Step 2: after 2 days of effort, he picks a tool and submits a purchase request. Step 3: Alisha recalls that this software already exists in ACME's inventory. Step 4: she rejects the request, citing the existing software. Note: this journey is based on desk research and 4 user interviews."
+          />
         </div>
       </section>
 
@@ -296,16 +234,15 @@ export default function Page() {
           </p>
         </div>
 
-        <div className="wider fork">
-          <p className="fork__title">Journey 1</p>
-          <p className="fork__title" style={{ justifySelf: "end" }}>Journey 2</p>
-          <div className="fork__art"><Slot label="Diagram: the two journeys (requester research vs. specialist detection)" /></div>
-          <div className="fork__col" style={{ order: 2 }}>
-            <p className="body">Help the Requester <strong>find and pick the right software</strong> in the procurement platform.</p>
-          </div>
-          <div className="fork__col" style={{ order: 2 }}>
-            <p className="body">Help the Procurement Specialist <strong>detect duplicate software requests</strong>.</p>
-          </div>
+        <div className="wider">
+          <Image
+            className="panel-img"
+            src="/img/journeys-compare.jpg"
+            width={2120}
+            height={798}
+            sizes="(max-width: 1100px) 100vw, 1060px"
+            alt="Journey 1: help the Requester find and pick the right software in the procurement platform. Journey 2: help the Procurement Specialist detect duplicate software requests."
+          />
         </div>
 
         <div className="col stack-16">
@@ -375,33 +312,14 @@ export default function Page() {
               mind. Also with the consideration that the user would want to click on these cards to request access.
             </p>
           </div>
-          <div className="iterations" role="img" aria-label="Earlier iterations of the software card, with the final widget in the middle">
-            {GHOSTS.map((g, i) => (
-              <div className="ghost" key={i} style={{ left: g.left, top: g.top }} aria-hidden>
-                <Image src="/img/runway.png" alt="" width={48} height={48} />
-                <span>Runway</span>
-                <span className="btn">Request access</span>
-              </div>
-            ))}
-            <div className="widget">
-              <span className="rec">Recommended</span>
-              <div className="widget__top">
-                <Image src="/img/runway.png" alt="" width={48} height={48} />
-                <div>
-                  <p className="widget__name">Runway</p>
-                  <p className="widget__co">Runway AI, Inc</p>
-                </div>
-                <p className="widget__price">$ 150<span>per seat</span></p>
-              </div>
-              <p className="widget__desc">AI video editor with generative tools for scenes, effects, and cleanup</p>
-              <p className="widget__lic">Enterprise license · 5 seats left</p>
-              <div className="widget__act">
-                <span>See details</span>
-                <span className="btn">Get access</span>
-              </div>
-            </div>
-            <p className="iterations__label">Final widget iteration</p>
-          </div>
+          <Image
+            className="panel-img"
+            src="/img/widget-iterations.jpg"
+            width={2016}
+            height={962}
+            sizes="(max-width: 1100px) 100vw, 1060px"
+            alt="Earlier iterations of the Runway software card around the final widget: Runway, Runway AI Inc, $150 per seat, AI video editor with generative tools for scenes, effects and cleanup, Enterprise license, 5 seats left, See details, Get access."
+          />
         </div>
       </section>
 
