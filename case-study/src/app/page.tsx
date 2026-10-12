@@ -29,29 +29,15 @@ export default function Page() {
           <h1 className="h-display">Designing a smart procurement experience</h1>
           <p className="hero__sub">A solution to preventing duplicate purchases at your organisation</p>
         </div>
-        <div className="hero-card">
-          <h2 className="hero-card__title">Designing a Smart Procurement Experience</h2>
-          <p className="hero-card__sub">A solution to preventing duplicate purchases at your organisation</p>
-          <dl className="hero-card__meta" style={{ margin: 0 }}>
-            <div>
-              <dt>Created for</dt>
-              <dd>ORO Labs</dd>
-            </div>
-            <div className="pair">
-              <div>
-                <dt>Role</dt>
-                <dd>Product Designer</dd>
-              </div>
-              <div>
-                <dt>Duration</dt>
-                <dd>2 weeks</dd>
-              </div>
-            </div>
-          </dl>
-          <Image className="shot-a" src="/img/hero-results.jpg" alt="Research results in the procurement assistant" width={1400} height={875} priority />
-          <Image className="shot-b" src="/img/hero-requests.jpg" alt="Home page with the request table" width={1400} height={875} priority />
-          <Image className="shot-c" src="/img/hero-drawer.jpg" alt="Request detail panel with approval steps" width={560} height={875} priority />
-        </div>
+        <Image
+          className="hero-cover"
+          src="/img/hero-cover.jpg"
+          alt="Designing a Smart Procurement Experience. Created for ORO Labs, role Product Designer, duration 2 weeks. Product screens: research results, the request list and a request's approval steps."
+          width={1057}
+          height={594}
+          sizes="(max-width: 1098px) 100vw, 1058px"
+          priority
+        />
       </header>
 
       <SectionNav />

@@ -5,7 +5,6 @@ import {
   IBM_Plex_Mono,
   IBM_Plex_Serif,
   Instrument_Sans,
-  Manrope,
   Nanum_Pen_Script,
 } from "next/font/google";
 import "./globals.css";
@@ -16,7 +15,6 @@ const plexSerif = IBM_Plex_Serif({ subsets: ["latin"], weight: ["400", "700"], v
 const eduTas = Edu_TAS_Beginner({ subsets: ["latin"], variable: "--font-edu-tas" });
 const eduSa = Edu_SA_Beginner({ subsets: ["latin"], variable: "--font-edu-sa" });
 const nanum = Nanum_Pen_Script({ subsets: ["latin"], weight: "400", variable: "--font-nanum" });
-const manrope = Manrope({ subsets: ["latin"], variable: "--font-manrope" });
 
 export const metadata: Metadata = {
   title: "Designing a smart procurement experience — ORO Labs case study",
@@ -24,7 +22,7 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const fonts = [instrument, plexMono, plexSerif, eduTas, eduSa, nanum, manrope].map((f) => f.variable).join(" ");
+  const fonts = [instrument, plexMono, plexSerif, eduTas, eduSa, nanum].map((f) => f.variable).join(" ");
   return (
     <html lang="en" className={fonts}>
       <body>{children}</body>
